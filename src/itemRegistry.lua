@@ -14,9 +14,10 @@ local atlas_handler = dofile(Core.getModpath("LunaCoreAPI") .. "/src/atlas_handl
 ---@type blang_parser_funcs
 local blang_parser = dofile(Core.getModpath("LunaCoreAPI") .. "/src/blang_parser.lua")
 
-local OnGameRegisterCreativeItems = Game.Event.OnGameCreativeItemsRegister or Game.Event.OnGameRegisterCreativeItems
-local OnGameRegisterItems = Game.Event.OnGameItemsRegister or Game.Event.OnGameRegisterItems
-local OnGameRegisterItemsTextures = Game.Event.OnGameItemsRegisterTexture or Game.Event.OnGameRegisterItemsTextures
+--- Backwards compatibility with 0.12.0
+local OnGameRegisterCreativeItems = Game.Items.OnRegisterCreativeItems or Game.Event.OnGameCreativeItemsRegister
+local OnGameRegisterItems = Game.Items.OnRegisterItems or Game.Event.OnGameItemsRegister
+local OnGameRegisterItemsTextures = Game.Items.OnRegisterItemsTextures or Game.Event.OnGameItemsRegisterTexture
 
 local Registry = CoreAPI.Items.Registry
 

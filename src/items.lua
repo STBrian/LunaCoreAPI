@@ -7,9 +7,10 @@ local function containsInvalidChars(s)
     if string.find(s, "[^%w_]") then return true else return false end
 end
 
-local OnGameRegisterCreativeItems = Game.Event.OnGameCreativeItemsRegister or Game.Event.OnGameRegisterCreativeItems
-local OnGameRegisterItems = Game.Event.OnGameItemsRegister or Game.Event.OnGameRegisterItems
-local OnGameRegisterItemsTextures = Game.Event.OnGameItemsRegisterTexture or Game.Event.OnGameRegisterItemsTextures
+--- Backwards compatibility with 0.12.0
+local OnGameRegisterCreativeItems = Game.Items.OnRegisterCreativeItems or Game.Event.OnGameCreativeItemsRegister
+local OnGameRegisterItems = Game.Items.OnRegisterItems or Game.Event.OnGameItemsRegister
+local OnGameRegisterItemsTextures = Game.Items.OnRegisterItemsTextures or Game.Event.OnGameItemsRegisterTexture
 
 ---@type ItemRegistry
 local itemRegistry = dofile(Core.getModpath("LunaCoreAPI") .. "/src/itemRegistry.lua")
