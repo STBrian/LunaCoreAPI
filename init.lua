@@ -14,6 +14,10 @@ CoreAPI.Utils.Classic = dofile(modpath .. "/src/utils/classic.lua")
 ---@type BitOpClass
 CoreAPI.Utils.Bitop = dofile(modpath .. "/src/utils/bitop/funcs.lua")
 
+CoreAPI.Utils.CLike = {}
+---@type cstruct
+CoreAPI.Utils.CLike.CStruct = dofile(modpath .. "/src/utils/clike/cstruct.lua")
+
 --- Returns if the object is from an instance or type
 ---@param t any
 ---@param o string|table
