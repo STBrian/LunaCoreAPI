@@ -25,18 +25,20 @@ tiers.DIAMOND = ToolTier:newInstanceFromMemory(0x00b0e160)
 tiers.GOLD = ToolTier:newInstanceFromMemory(0x00b0e174)
 
 Game.Gamepad.OnKeyPressed:Connect(function ()
-    Core.Debug.message("Gold Tier")
-    Core.Debug.message("Mining level: "..tiers.IRON.miningEfficiency)
-
     Core.Debug.message("Wood Tool Tier")
-    Core.Debug.message("Mining level: "..tiers.WOOD.miningEfficiency)
+    Core.Debug.message("Mining efficiency: "..tiers.WOOD.miningEfficiency)
 
     Core.Debug.message("Stone Tool Tier")
-    Core.Debug.message("Mining level: "..tiers.STONE.miningEfficiency)
+    Core.Debug.message("Mining efficiency: "..tiers.STONE.miningEfficiency)
 
     Core.Debug.message("Iron Tool Tier")
-    Core.Debug.message("Mining level: "..tiers.IRON.miningEfficiency)
+    Core.Debug.message("Mining efficiency: "..tiers.IRON.miningEfficiency)
 
-    Core.Debug.message("Iron Tool Tier")
-    Core.Debug.message("Mining level: "..tiers.IRON.miningEfficiency)
+    Core.Debug.message("Gold Tier")
+    Core.Debug.message("Mining efficiency: "..tiers.GOLD.miningEfficiency)
+
+    Core.Debug.message("Diamond Tool Tier")
+    Core.Debug.message("Mining efficiency: "..tiers.DIAMOND.miningEfficiency)
 end)
+
+tiers.WOOD.miningEfficiency = -1

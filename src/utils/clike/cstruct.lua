@@ -17,6 +17,19 @@ local readFunctions = {
     ["long long"]=nil
 }
 
+local writeFunctions = {
+    void=nil,
+    int=Core.Memory.writeS32,
+    uint=Core.Memory.writeU32,
+    short=Core.Memory.writeS16,
+    ushort=Core.Memory.writeU16,
+    char=Core.Memory.writeS8,
+    uchar=Core.Memory.writeU8,
+    float=Core.Memory.writeFloat,
+    double=Core.Memory.writeDouble,
+    ["long long"]=nil
+}
+
 local function align(offset, size)
     return math.floor((offset + size - 1) / size) * size
 end
@@ -266,6 +279,29 @@ function cstruct:_get_value(key)
     return readFunc(self._moffset + value.offset)
 end
 
+function cstruct:_set_value(key, newvalue)
+    self:_check_instance()
+    local field = self._fields[key]
+    if field.isArray then
+        error("not implemented for arrays")
+    end
+
+    local dataType = field.dataType
+    if field.isUnsigned then
+        dataType = "u"..dataType
+    end
+    local writeFunc = writeFunctions[dataType]
+    if field.isPointer then
+        dataType = dataType.."*"
+        writeFunc = writeFunctions.uint
+    end
+
+    if not writeFunc then
+        error("not implemented for "..dataType)
+    end
+    writeFunc(self._moffset + field.offset, newvalue)
+end
+
 function cstruct:_implementIndex()
     local def_index = self.__index
     self.__index = function (t, key)
@@ -274,6 +310,13 @@ function cstruct:_implementIndex()
             return t:_get_value(key)
         end
         return def_index[key]
+    end
+    self.__newindex = function (t, key, value)
+        local _fields = rawget(t, "_fields")
+        if _fields and _fields[key] ~= nil then
+            t:_set_value(key, value)
+        end
+        rawset(t, key, value)
     end
 end
 
