@@ -2,6 +2,11 @@
 ---@field super ClassicClass
 local cstruct = CoreAPI.Utils.Classic:extend()
 
+--- Warning when using versions prior to 0.13.0
+if not Core.Memory.readS32 then
+    Core.Debug.log("[Warning] CoreAPI: Signed values are not available in this version for cstruct", false)
+end
+
 local ctypes = {void=0, int=4, short=2, char=1, float=4, double=8, ["long long"]=8}
 
 local readFunctions = {
@@ -94,6 +99,9 @@ example:
 ]]
 function cstruct:new(def)
     local curOffset = 0
+    self._allocated = false
+    self._isInstance = false
+    self._isClass = false
     self._fields = {}
     for _, value in ipairs(def) do
         value[1] = string.lower(value[1])
@@ -113,7 +121,7 @@ function cstruct:new(def)
         end
         local unsignedMatch = nil
         if string.match(value[1], "unsigned") then
-            unsignedMatch = string.match(value[1], "^ *(unsigned) *"..typeMatch)
+            unsignedMatch = string.match(value[1], "^%s*(unsigned)%s+"..typeMatch)
             if not unsignedMatch then
                 error("Unexpected type "..value[1])
             end
@@ -163,7 +171,7 @@ function cstruct:new(def)
             size = elementSize
         end
         local name = string.match(value[2], "^ *([%w]+) *$")
-        if not name then
+        if not name or self[name] ~= nil or name == "_moffset" or name == "_sizeof" then
             error("Invalid name "..value[2])
         end
         if self._fields[name] ~= nil then
@@ -183,9 +191,6 @@ function cstruct:new(def)
     end
     self._moffset = nil
     self._sizeof = curOffset
-    self._allocated = false
-    self._isInstance = false
-    self._isClass = false
 end
 
 ---Creates a class for a cstruct definition
@@ -315,6 +320,7 @@ function cstruct:_implementIndex()
         local _fields = rawget(t, "_fields")
         if _fields and _fields[key] ~= nil then
             t:_set_value(key, value)
+            return
         end
         rawset(t, key, value)
     end
