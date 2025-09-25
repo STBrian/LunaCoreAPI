@@ -6,13 +6,13 @@ local function containsInvalidChars(s)
 end
 
 ---@type uvs_packer_funcs
-local uvs_packer = dofile(Core.getModpath("LunaCoreAPI") .. "/src/uvs_packer.lua")
+local uvs_packer = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/uvs/uvs_packer.lua")
 ---@type uvs_builder_functions
-local uvs_rebuilder = dofile(Core.getModpath("LunaCoreAPI") .. "/src/uvs_rebuilder.lua")
+local uvs_rebuilder = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/uvs/uvs_rebuilder.lua")
 ---@type atlas_handler_functions
-local atlas_handler = dofile(Core.getModpath("LunaCoreAPI") .. "/src/atlas_handler.lua")
+local atlas_handler = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/atlas_handler.lua")
 ---@type blang_parser_funcs
-local blang_parser = dofile(Core.getModpath("LunaCoreAPI") .. "/src/blang_parser.lua")
+local blang_parser = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/blang_parser.lua")
 
 --- Backwards compatibility with 0.12.0
 local OnGameRegisterCreativeItems = Game.Items.OnRegisterCreativeItems or Game.Event.OnGameCreativeItemsRegister
