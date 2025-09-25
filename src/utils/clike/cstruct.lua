@@ -3,6 +3,7 @@
 local cstruct = CoreAPI.Utils.Classic:extend()
 
 --- Warning when using versions prior to 0.13.0
+--- Writing negative values will be rounded to 0
 if not Core.Memory.readS32 then
     Core.Debug.log("[Warning] CoreAPI: Signed values are not available in this version for cstruct", false)
 end
@@ -11,11 +12,11 @@ local ctypes = {void=0, int=4, short=2, char=1, float=4, double=8, ["long long"]
 
 local readFunctions = {
     void=nil,
-    int=Core.Memory.readS32,
+    int=Core.Memory.readS32 or Core.Memory.readU32, -- Compatibility with 0.12.0 although its usage is highly discouraged since values will be wrong
     uint=Core.Memory.readU32,
-    short=Core.Memory.readS16,
+    short=Core.Memory.readS16 or Core.Memory.readU16,
     ushort=Core.Memory.readU16,
-    char=Core.Memory.readS8,
+    char=Core.Memory.readS8 or Core.Memory.readU8,
     uchar=Core.Memory.readU8,
     float=Core.Memory.readFloat,
     double=Core.Memory.readDouble,
@@ -24,11 +25,11 @@ local readFunctions = {
 
 local writeFunctions = {
     void=nil,
-    int=Core.Memory.writeS32,
+    int=Core.Memory.writeU32, -- The function works the same for both (unless you are in versions prior to 0.13.0)
     uint=Core.Memory.writeU32,
-    short=Core.Memory.writeS16,
+    short=Core.Memory.writeU16, -- The function works the same for both
     ushort=Core.Memory.writeU16,
-    char=Core.Memory.writeS8,
+    char=Core.Memory.writeU8, -- The function works the same for both
     uchar=Core.Memory.writeU8,
     float=Core.Memory.writeFloat,
     double=Core.Memory.writeDouble,
