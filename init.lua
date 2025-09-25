@@ -44,6 +44,7 @@ CoreAPI.Languages = {"de_DE", "en_GB", "en_US", "es_ES", "es_MX", "fr_CA",
     "zh_CN", "zh_TW"}
 
 dofile(modpath .. "/src/items.lua")
+dofile(modpath .. "/src/tools.lua")
 dofile(modpath .. "/src/itemGroups.lua")
 
 Core.Debug.log("Loaded LunaCoreAPI", false);
