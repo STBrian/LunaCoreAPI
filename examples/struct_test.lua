@@ -1,41 +1,42 @@
 ---@class ToolTier : cstruct
 ---@field miningLevel number
 ---@field durability number
----@field unknown number
+---@field miningEfficiency number
 ---@field damageBonus number
 ---@field enchantability number
-local ToolTier = {}
-
-local toolTierStruct = CoreAPI.Utils.CLike.CStruct.newStruct({
+local ToolTier = CoreAPI.Utils.CLike.CStruct.newStruct({
     {"int", "miningLevel"},
     {"int", "durability"},
-    {"int", "unknown"},
+    {"float", "miningEfficiency"}, -- They really used float for an int value 
     {"int", "damageBonus"},
-    {"int", "enchantability"},
-})
+    {"int", "enchantability"}
+}, "ToolTier")
 
 local tiers = {}
 ---@type ToolTier
-tiers.WOOD = toolTierStruct:newInstanceFromMemory(0x00b0e124)
+tiers.WOOD = ToolTier:newInstanceFromMemory(0x00b0e124)
 ---@type ToolTier
-tiers.STONE = toolTierStruct:newInstanceFromMemory(0x00b0e138)
+tiers.STONE = ToolTier:newInstanceFromMemory(0x00b0e138)
 ---@type ToolTier
-tiers.IRON = toolTierStruct:newInstanceFromMemory(0x00b0e14c)
+tiers.IRON = ToolTier:newInstanceFromMemory(0x00b0e14c)
 ---@type ToolTier
-tiers.DIAMOND = toolTierStruct:newInstanceFromMemory(0x00b0e160)
+tiers.DIAMOND = ToolTier:newInstanceFromMemory(0x00b0e160)
 ---@type ToolTier
-tiers.GOLD = toolTierStruct:newInstanceFromMemory(0x00b0e174)
+tiers.GOLD = ToolTier:newInstanceFromMemory(0x00b0e174)
 
 Game.Gamepad.OnKeyPressed:Connect(function ()
+    Core.Debug.message("Gold Tier")
+    Core.Debug.message("Mining level: "..tiers.IRON.miningEfficiency)
+
     Core.Debug.message("Wood Tool Tier")
-    Core.Debug.message("Mining level: "..tiers.WOOD.miningLevel)
-    Core.Debug.message("Durability: "..tiers.WOOD.durability)
+    Core.Debug.message("Mining level: "..tiers.WOOD.miningEfficiency)
 
     Core.Debug.message("Stone Tool Tier")
-    Core.Debug.message("Mining level: "..tiers.STONE.miningLevel)
-    Core.Debug.message("Durability: "..tiers.STONE.durability)
+    Core.Debug.message("Mining level: "..tiers.STONE.miningEfficiency)
 
     Core.Debug.message("Iron Tool Tier")
-    Core.Debug.message("Mining level: "..tiers.IRON.miningLevel)
-    Core.Debug.message("Durability: "..tiers.IRON.durability)
+    Core.Debug.message("Mining level: "..tiers.IRON.miningEfficiency)
+
+    Core.Debug.message("Iron Tool Tier")
+    Core.Debug.message("Mining level: "..tiers.IRON.miningEfficiency)
 end)

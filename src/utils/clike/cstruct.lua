@@ -1,4 +1,5 @@
----@class cstruct
+---@class cstruct : ClassicClass
+---@field super ClassicClass
 local cstruct = CoreAPI.Utils.Classic:extend()
 
 local ctypes = {void=0, int=4, short=2, char=1, float=4, double=8, ["long long"]=8}
@@ -58,16 +59,16 @@ function carray:_get_value(key)
     return readFunc(self._offset + elementSize * (key - 1))
 end
 
-local carray_mt = getmetatable(carray())
-local carray_index = carray_mt.__index
-carray_mt.__index = function (self, key)
+carray.__name = "carray"
+local carray_def_index = carray.__index
+carray.__index = function (self, key)
     if type(key) == "number" then
-        local _get_value = rawget(self, "_get_value")
-        return _get_value(carray, key)
+        local _get_value = rawget(carray, "_get_value")
+        return _get_value(self, key)
     end
-    return carray_index[key]
+    return carray_def_index[key]
 end
-carray_mt.__len = function (self)
+carray.__len = function (self)
     return self._size
 end
 
@@ -170,17 +171,32 @@ function cstruct:new(def)
     self._moffset = nil
     self._sizeof = curOffset
     self._allocated = false
+    self._isInstance = false
+    self._isClass = false
 end
 
----Creates a new cstruct definition
----@param def any
----@return cstruct
-function cstruct.newStruct(def)
-    return cstruct(def)
+---Creates a class for a cstruct definition
+---@param def table
+---@param name string
+---@return table
+function cstruct.newStruct(def, name)
+    if type(name) ~= "string" then
+        error("name must be a string")
+    end
+    local cls = cstruct:extend()
+    cls.__name = name
+    cls:new(def)
+    cls._isClass = true
+    return cls
 end
 
 function cstruct:newInstance()
-    local t = cstruct({})
+    local t
+    if self._isClass then
+        t = self({})
+    else
+        error("you can only create an instance from a class struct")
+    end
     t._fields = self._fields
     t._sizeof = self._sizeof
     local moffset = Core.Memory.malloc(self._sizeof)
@@ -189,20 +205,27 @@ function cstruct:newInstance()
     end
     t._allocated = true
     t._moffset = moffset
+    t._isInstance = true
     return t
 end
 
 function cstruct:newInstanceFromMemory(offset)
-    local t = cstruct({})
+    local t
+    if self._isClass then
+        t = self({})
+    else
+        error("you can only create an instance from a class struct")
+    end
     t._fields = self._fields
     t._sizeof = self._sizeof
     t._allocated = false
     t._moffset = offset
+    t._isInstance = true
     return t
 end
 
 function cstruct:_check_instance()
-    if self._moffset == nil then
+    if not self._isInstance then
         error("Not an instance")
     end
 end
@@ -217,6 +240,7 @@ end
 
 function cstruct:getPointer()
     self:_check_instance()
+    return self._moffset
 end
 
 function cstruct:_get_value(key)
@@ -242,19 +266,26 @@ function cstruct:_get_value(key)
     return readFunc(self._moffset + value.offset)
 end
 
-local cstruct_mt = getmetatable(cstruct({}))
-local cstruct_index = cstruct_mt.__index
-cstruct_mt.__index = function (self, key)
-    local _fields = rawget(self, "_fields")
-    if _fields and _fields[key] ~= nil then
-        --Core.Debug.log("fields", false)
-        local _get_value = rawget(cstruct, "_get_value")
-        return _get_value(self, key)
+function cstruct:_implementIndex()
+    local def_index = self.__index
+    self.__index = function (t, key)
+        local _fields = rawget(t, "_fields")
+        if _fields and _fields[key] ~= nil then
+            return t:_get_value(key)
+        end
+        return def_index[key]
     end
-    --Core.Debug.log("fallback", false)
-    return cstruct_index[key]
 end
-cstruct_mt.__gc = function (self)
+
+function cstruct:extend()
+    local cls = self.super.extend(self)
+    cls:_implementIndex()
+    return cls
+end
+
+cstruct.__name = "cstruct"
+cstruct:_implementIndex()
+cstruct.__gc = function (self)
     if self._allocated then
         Core.Memory.free(self._moffset)
     end
