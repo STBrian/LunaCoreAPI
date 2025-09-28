@@ -24,12 +24,17 @@ local Registry = CoreAPI.Items.Registry
 local itemRegistryGlobals = {
     initializedItems = false,
     initialized = false,
+    initializedResources = false,
     allowedUVs = {},
     allowedAtlas = {},
     allowedTextures = {}
 }
 
----Init ItemRegistry globals
+OnGameRegisterItems:Connect(function ()
+    itemRegistryGlobals.initializedItems = true
+end)
+
+--- Init ItemRegistry globals
 local function initItemRegistry()
     local titleId = Core.getTitleId()
     local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
@@ -279,7 +284,53 @@ function itemRegistry:modifyTextureAtlas(pack, packName, uvsData)
     return true
 end
 
-function itemRegistry:registerItems()
+local function initResources()
+    local titleId = Core.getTitleId()
+    local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
+
+    --- Modify every locale file
+    for _, localeName in pairs(CoreAPI.Languages) do
+        OnGameRegisterItems:Connect(function ()
+            local count = 0
+            for _ in pairs(Registry) do
+                count = count + 1
+            end
+            if count < 1 then
+                return
+            end
+            if Core.Filesystem.fileExists(string.format("%s/loc/%s-pocket.blang", basePath, localeName)) then
+                local localeFile = Core.Filesystem.open(string.format("%s/loc/%s-pocket.blang", basePath, localeName), "r+")
+                if not localeFile then
+                    CoreAPI._logger:warn(string.format("Failed to open locale file. Custom items may not have names for '%s'", localeName))
+                else
+                    local localeParser = blang_parser.newParser(localeFile)
+                    if not localeParser.parsed then
+                        CoreAPI._logger:warn(string.format("Failed to parse locale file. Custom items may not have names for '%s'", localeName))
+                    else
+                        local changed = false
+                        for _, definition in pairs(Registry) do
+                            local itemName = definition.locales[localeName] or definition.locales["en_US"]
+                            if itemName ~= nil then
+                                if not (localeParser:containsText("item."..definition.name..".name") and localeParser:areEqual("item."..definition.name..".name", itemName)) then
+                                    localeParser:addText("item." .. definition.name .. ".name", itemName)
+                                    changed = true
+                                end
+                            end
+                        end
+                        if changed then
+                            localeParser:dumpFile(localeFile)
+                            collectgarbage("collect")
+                        end
+                    end
+                    localeFile:close()
+                end
+            end
+            collectgarbage("collect")
+        end)
+    end
+end
+
+function itemRegistry:buildResources()
     for packName, value in pairs(CoreAPI.ResourcePacks) do
         local uvsData = {}
         if self:modifyPackUVs(value, packName, uvsData) then
@@ -305,53 +356,11 @@ function itemRegistry:registerItems()
             end
         end
     end)
-end
 
-OnGameRegisterItems:Connect(function ()
-    itemRegistryGlobals.initializedItems = true
-end)
-
---- Modify every locale file
-for _, localeName in pairs(CoreAPI.Languages) do
-    OnGameRegisterItems:Connect(function ()
-        local count = 0
-        for _ in pairs(Registry) do
-            count = count + 1
-        end
-        if count < 1 then
-            return
-        end
-        local titleId = Core.getTitleId()
-        local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
-        if Core.Filesystem.fileExists(string.format("%s/loc/%s-pocket.blang", basePath, localeName)) then
-            local localeFile = Core.Filesystem.open(string.format("%s/loc/%s-pocket.blang", basePath, localeName), "r+")
-            if not localeFile then
-                CoreAPI._logger:warn(string.format("Failed to open locale file. Custom items may not have names for '%s'", localeName))
-            else
-                local localeParser = blang_parser.newParser(localeFile)
-                if not localeParser.parsed then
-                    CoreAPI._logger:warn(string.format("Failed to parse locale file. Custom items may not have names for '%s'", localeName))
-                else
-                    local changed = false
-                    for _, definition in pairs(Registry) do
-                        local itemName = definition.locales[localeName] or definition.locales["en_US"]
-                        if itemName ~= nil then
-                            if not (localeParser:containsText("item."..definition.name..".name") and localeParser:areEqual("item."..definition.name..".name", itemName)) then
-                                localeParser:addText("item." .. definition.name .. ".name", itemName)
-                                changed = true
-                            end
-                        end
-                    end
-                    if changed then
-                        localeParser:dumpFile(localeFile)
-                        collectgarbage("collect")
-                    end
-                end
-                localeFile:close()
-            end
-        end
-        collectgarbage("collect")
-    end)
+    if not itemRegistryGlobals.initializedResources then
+        initResources()
+        itemRegistryGlobals.initializedResources = true
+    end
 end
 
 return itemRegistry
