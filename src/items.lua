@@ -24,7 +24,7 @@ local itemsGlobals = {
 ---@return ItemRegistry
 function CoreAPI.Items.newItemRegistry(modname)
     if itemsGlobals.initializedItems then
-        error("New items must be registered on mod load")
+        error("new items must be registered on mod load")
     end
     if type(modname) ~= "string" then
         error("'modname' must be a string")
@@ -34,21 +34,20 @@ function CoreAPI.Items.newItemRegistry(modname)
     end
     local modPath = Core.getModpath(modname)
     if modPath == nil then
-        error("Modname not registered")
+        error("modname not registered")
     end
     return itemRegistry(modname)
 end
 
 OnGameRegisterItems:Connect(function ()
-    Core.Debug.log("[Info] CoreAPI: Register items", false)
-    itemRegistry = nil -- Deletes functions that won't be necessary after this event
+    CoreAPI._logger:info("Register items")
     itemsGlobals.initializedItems = true
 end)
 OnGameRegisterItemsTextures:Connect(function ()
-    Core.Debug.log("[Info] CoreAPI: Register items texture", false)
+    CoreAPI._logger:info("Register items texture")
 end)
 OnGameRegisterCreativeItems:Connect(function ()
-    Core.Debug.log("[Info] CoreAPI: Register creative items", false)
+    CoreAPI._logger:info("Register creative items")
 end)
 
 --- Get the item id with the item identifier

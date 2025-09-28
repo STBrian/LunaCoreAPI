@@ -5,7 +5,7 @@ local cstruct = CoreAPI.Utils.Classic:extend()
 --- Warning when using versions prior to 0.13.0
 --- Writing negative values will be rounded to 0
 if not Core.Memory.readS32 then
-    Core.Debug.log("[Warning] CoreAPI: Signed values are not available in this version for cstruct", false)
+    CoreAPI._logger:warn("Signed values are not available in this version for cstruct")
 end
 
 local ctypes = {void=0, int=4, short=2, char=1, float=4, double=8, ["long long"]=8}

@@ -3,13 +3,10 @@ local struct = CoreAPI.Utils.Struct
 ---@class BlangParser
 local blang_parser = CoreAPI.Utils.Classic:extend()
 
----@class blang_parser_funcs
-local blang_parser_funcs = {}
-
 ---New blang parser
 ---@param file FilesystemFile
 ---@return BlangParser
-function blang_parser_funcs.newParser(file)
+function blang_parser.newParser(file)
     return blang_parser(file)
 end
 
@@ -126,4 +123,4 @@ function blang_parser:dumpFile(file)
     return true
 end
 
-return blang_parser_funcs
+return blang_parser

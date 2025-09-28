@@ -4,9 +4,6 @@ local bit = CoreAPI.Utils.Bitop
 ---@class AtlasHandler
 local atlasHandler = CoreAPI.Utils.Classic:extend()
 
----@class atlas_handler_functions
-local atlas_handler_functions = {}
-
 local function calculateLinearPosition(x, y, w, h)
     return (bit.lshift(bit.rshift(y, 3) * bit.rshift(w, 3) + bit.rshift(x, 3), 6) +
         (bit.bor(bit.bor(bit.bor(bit.bor(bit.bor(bit.band(x, 1), bit.lshift(bit.band(y, 1), 1)), bit.lshift(bit.band(x, 2), 1)), bit.lshift(bit.band(y, 2), 2)), bit.lshift(bit.band(x, 4), 2)), bit.lshift(bit.band(y, 4), 3))))
@@ -15,7 +12,7 @@ end
 ---New atlas handler
 ---@param file FilesystemFile
 ---@return AtlasHandler
-function atlas_handler_functions.newAtlasHandler(file)
+function atlasHandler.newAtlasHandler(file)
     return atlasHandler(file)
 end
 
@@ -92,4 +89,4 @@ function atlasHandler:pasteTexture(textureData, ax, ay)
     return true
 end
 
-return atlas_handler_functions
+return atlasHandler

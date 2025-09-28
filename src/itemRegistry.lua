@@ -5,13 +5,13 @@ local function containsInvalidChars(s)
     if string.find(s, "[^%w_]") then return true else return false end
 end
 
----@type uvs_packer_funcs
+---@type UVsPacker
 local uvs_packer = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/uvs/uvs_packer.lua")
----@type uvs_builder_functions
+---@type UVsRebuilder
 local uvs_rebuilder = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/uvs/uvs_rebuilder.lua")
----@type atlas_handler_functions
+---@type AtlasHandler
 local atlas_handler = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/atlas_handler.lua")
----@type blang_parser_funcs
+---@type BlangParser
 local blang_parser = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/blang_parser.lua")
 
 --- Backwards compatibility with 0.12.0
@@ -22,6 +22,7 @@ local OnGameRegisterItemsTextures = Game.Items.OnRegisterItemsTextures or Game.E
 local Registry = CoreAPI.Items.Registry
 
 local itemRegistryGlobals = {
+    initializedItems = false,
     initialized = false,
     allowedUVs = {},
     allowedAtlas = {},
@@ -37,7 +38,7 @@ local function initItemRegistry()
     --- Atlas UVs
     for packName, value in pairs(CoreAPI.ResourcePacks) do
         if not Core.Filesystem.fileExists(string.format("%s/atlas/atlas.items.meta_%08X.uvs", basePath, value.hash)) then
-            Core.Debug.log(string.format("[Warning] CoreAPI: No atlas uvs found! Custom items won't have texture for '%s' pack. Please provide an atlas uvs under %s/atlas/atlas.items.meta_%08X.uvs", packName, basePath, value.hash), false)
+            CoreAPI._logger:warn(string.format("No atlas uvs found! Custom items won't have texture for '%s' pack. Please provide an atlas uvs under %s/atlas/atlas.items.meta_%08X.uvs", packName, basePath, value.hash))
         else
             table.insert(itemRegistryGlobals.allowedUVs, packName)
         end
@@ -46,7 +47,7 @@ local function initItemRegistry()
     --- Atlas textures
     for packName, value in pairs(CoreAPI.ResourcePacks) do
         if not Core.Filesystem.fileExists(string.format("%s/atlas/atlas.items.meta_%08X_0.3dst", basePath, value.hash)) then
-            Core.Debug.log(string.format("[Warning] CoreAPI: No atlas texture found! Custom items may not have texture for '%s' pack. Please provide an atlas texture under %s/atlas/atlas.items.meta_%08X_0.3dst", packName, basePath, value.hash), false)
+            CoreAPI._logger:warn(string.format("No atlas texture found! Custom items may not have texture for '%s' pack. Please provide an atlas texture under %s/atlas/atlas.items.meta_%08X_0.3dst", packName, basePath, value.hash))
         else
             table.insert(itemRegistryGlobals.allowedTextures, packName)
         end
@@ -55,7 +56,7 @@ local function initItemRegistry()
     --- Locales
     for _, localeName in pairs(CoreAPI.Languages) do
         if not Core.Filesystem.fileExists(string.format("%s/loc/%s-pocket.blang", basePath, localeName)) then
-            Core.Debug.log(string.format("[Warning] CoreAPI: No locale file found! Custom items won't have a locale name for '%s'. Please provide a locale file under %s/loc/%s-pocket.blang", localeName, basePath, localeName), false)
+            CoreAPI._logger:warn(string.format("No locale file found! Custom items won't have a locale name for '%s'. Please provide a locale file under %s/loc/%s-pocket.blang", localeName, basePath, localeName))
         end
     end
 
@@ -74,6 +75,9 @@ end
 ---@param nameId string
 ---@param definition table
 function itemRegistry:registerItem(nameId, itemId, definition)
+    if itemRegistryGlobals.initializedItems then
+        error("new items must be registered on mod load")
+    end
     if type(nameId) ~= "string" then
         error("'nameId' must be a string")
     end
@@ -133,7 +137,7 @@ function itemRegistry:registerItem(nameId, itemId, definition)
             texture = string.gsub(texture, "\\", "/")
             local fullPath = string.format("%s/assets/textures/%s", modPath, texture)
             if not Core.Filesystem.fileExists(fullPath) then
-                Core.Debug.log("[Warning] CoreAPI: Texture path '" .. fullPath .. "' doesn't exists", false)
+                CoreAPI._logger:warn("Texture path '" .. fullPath .. "' doesn't exists")
             else
                 itemDefinition.texturePath = fullPath
                 itemDefinition.texture = "textures/" .. texture:gsub(".3dst$", "")
@@ -149,12 +153,22 @@ function itemRegistry:registerItem(nameId, itemId, definition)
             itemDefinition.stackSize = definition.stackSize
         end
     end
+    local regItem = Game.Items.registerItem(itemDefinition.name, itemDefinition.itemId)
+    if regItem ~= nil then
+        itemDefinition.item = regItem
+        regItem.StackSize = itemDefinition.stackSize
+    else
+        CoreAPI._logger:warn("Failed to register item '" .. itemDefinition.nameId .. "'")
+        return
+    end
+
     table.insert(self.definitions, itemDefinition)
-    Registry[regNameId] = {itemId = itemId + 256, name = gameNameId, locales = itemDefinition.locales, item = nil}
+    Registry[regNameId] = {itemId = itemId + 256, name = gameNameId, locales = itemDefinition.locales, item = regItem}
+    return itemDefinition.item
 end
 
 ---Returns true if any change was made
----@param packer UVs_packer
+---@param packer UVsPacker
 ---@param definition any
 ---@return boolean
 local function registerUV(packer, definition)
@@ -162,7 +176,7 @@ local function registerUV(packer, definition)
         return false
     end
     if not packer:addUV(definition.textureName:gsub("/", "_"), definition.texture) then
-        Core.Debug.log("[Warning] CoreAPI: Failed to register UV for item '" .. definition.nameId .. "'", false)
+        CoreAPI._logger:warn("Failed to register UV for item '" .. definition.nameId .. "'")
         return false
     end
     return true
@@ -179,13 +193,13 @@ function itemRegistry:modifyPackUVs(pack, packName, out)
 
     local uvsFile = Core.Filesystem.open(string.format("%s/atlas/atlas.items.meta_%08X.uvs", basePath, pack.hash), "r+")
     if not uvsFile then
-        Core.Debug.log(string.format("[Warning] CoreAPI: Failed to open UVs file. Custom items may not have texture for '%s' pack", packName), false)
+        CoreAPI._logger:warn(string.format("Failed to open UVs file. Custom items may not have texture for '%s' pack", packName))
         return false
     end
 
     local uvsData = uvs_rebuilder.loadFile(uvsFile)
     if not uvsData then
-        Core.Debug.log(string.format("[Warning] CoreAPI: Failed to parse UVs file. Custom items may not have texture for '%s' pack", packName), false)
+        CoreAPI._logger:warn(string.format("Failed to parse UVs file. Custom items may not have texture for '%s' pack", packName))
         return false
     end
 
@@ -218,13 +232,13 @@ end
 local function pasteTextureToAtlas(uvItem, definition, handler)
     local texLoadFile = Core.Filesystem.open(definition.texturePath, "r")
     if not texLoadFile then
-        Core.Debug.log("[Warning] CoreAPI: Failed to open texture '" .. definition.texturePath .. "'", false)
+        CoreAPI._logger:warn("Failed to open texture '" .. definition.texturePath .. "'")
         return false
     end
 
     -- File is updated automatically to 
     if not handler:pasteTexture(texLoadFile, uvItem[1]["uv"][1], uvItem[1]["uv"][2]) then
-        Core.Debug.log("[Warning] CoreAPI: Failed to load texture '" .. definition.texturePath .. "'", false)
+        CoreAPI._logger:warn("Failed to load texture '" .. definition.texturePath .. "'")
         return false
     end
 
@@ -238,13 +252,13 @@ function itemRegistry:modifyTextureAtlas(pack, packName, uvsData)
 
     local atlasFile = Core.Filesystem.open(string.format("%s/atlas/atlas.items.meta_%08X_0.3dst", basePath, pack.hash), "r+")
     if not atlasFile then
-        Core.Debug.log(string.format("[Warning] CoreAPI: Failed to open atlas file. Custom items may not have texture for '%s' pack", packName), false)
+        CoreAPI._logger:warn(string.format("Failed to open atlas file. Custom items may not have texture for '%s' pack", packName))
         return false
     end
 
     local handler = atlas_handler.newAtlasHandler(atlasFile)
     if not handler.parsed then
-        Core.Debug.log(string.format("[Warning] CoreAPI: Failed to parse atlas file. Custom items may not have texture for '%s' pack", packName), false)
+        CoreAPI._logger:warn(string.format("Failed to parse atlas file. Custom items may not have texture for '%s' pack", packName))
         atlasFile:close()
         return false
     end
@@ -273,18 +287,6 @@ function itemRegistry:registerItems()
         end
     end
 
-    OnGameRegisterItems:Connect(function ()
-        for _, definition in ipairs(self.definitions) do
-            local regItem = Game.Items.registerItem(definition.name, definition.itemId)
-            if regItem ~= nil then
-                definition.item = regItem
-                Registry[definition.nameId].item = regItem
-                regItem.StackSize = definition.stackSize
-            else
-                Core.Debug.log("[Warning] CoreAPI: Failed to register item '" .. definition.nameId .. "'", false)
-            end
-        end
-    end)
     OnGameRegisterItemsTextures:Connect(function ()
         for _, definition in ipairs(self.definitions) do
             if definition.item ~= nil then
@@ -305,6 +307,10 @@ function itemRegistry:registerItems()
     end)
 end
 
+OnGameRegisterItems:Connect(function ()
+    itemRegistryGlobals.initializedItems = true
+end)
+
 --- Modify every locale file
 for _, localeName in pairs(CoreAPI.Languages) do
     OnGameRegisterItems:Connect(function ()
@@ -320,11 +326,11 @@ for _, localeName in pairs(CoreAPI.Languages) do
         if Core.Filesystem.fileExists(string.format("%s/loc/%s-pocket.blang", basePath, localeName)) then
             local localeFile = Core.Filesystem.open(string.format("%s/loc/%s-pocket.blang", basePath, localeName), "r+")
             if not localeFile then
-                Core.Debug.log(string.format("[Warning] CoreAPI: Failed to open locale file. Custom items may not have names for '%s'", localeName), false)
+                CoreAPI._logger:warn(string.format("Failed to open locale file. Custom items may not have names for '%s'", localeName))
             else
                 local localeParser = blang_parser.newParser(localeFile)
                 if not localeParser.parsed then
-                    Core.Debug.log(string.format("[Warning] CoreAPI: Failed to parse locale file. Custom items may not have names for '%s'", localeName), false)
+                    CoreAPI._logger:warn(string.format("Failed to parse locale file. Custom items may not have names for '%s'", localeName))
                 else
                     local changed = false
                     for _, definition in pairs(Registry) do

@@ -1,4 +1,5 @@
-local modpath = Core.getModpath("LunaCoreAPI")
+local modid = "LunaCoreAPI"
+local modpath = Core.getModpath(modid)
 
 CoreAPI = {_VERSION = "0.1.0"}
 
@@ -13,6 +14,10 @@ CoreAPI.Utils.Struct = dofile(modpath .. "/src/utils/struct.lua")
 CoreAPI.Utils.Classic = dofile(modpath .. "/src/utils/classic.lua")
 ---@type BitOpClass
 CoreAPI.Utils.Bitop = dofile(modpath .. "/src/utils/bitop/funcs.lua")
+---@type Logger
+CoreAPI.Utils.Logger = dofile(modpath .. "/src/utils/logger.lua")
+
+CoreAPI._logger = CoreAPI.Utils.Logger.newLogger(modid)
 
 CoreAPI.Utils.CLike = {}
 ---@type cstruct
@@ -47,4 +52,4 @@ dofile(modpath .. "/src/items.lua")
 dofile(modpath .. "/src/tools.lua")
 dofile(modpath .. "/src/itemGroups.lua")
 
-Core.Debug.log("Loaded LunaCoreAPI", false);
+CoreAPI._logger:info("Loaded")

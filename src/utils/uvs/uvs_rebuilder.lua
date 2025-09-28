@@ -12,7 +12,7 @@ local function readString(f, pos)
     return f:sub(pos, pos + idx)
 end
 
----@class uvs_builder_functions
+---@class UVsRebuilder
 local uvs_builder = {}
 
 ---Loads the content of a uvs file

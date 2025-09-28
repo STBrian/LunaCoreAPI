@@ -35,14 +35,14 @@ local function findFreeSpace(uvs, tileSize, aw, ah)
     return freeSpace
 end
 
----@class UVs_packer
+---@class UVsPacker
 local uvs_packer = CoreAPI.Utils.Classic:extend()
 
 ---Returns a new instance of UVs_packer
 ---@param uvs table
 ---@param tileSize number
----@return UVs_packer
-local function newUVsPacker(uvs, tileSize)
+---@return UVsPacker
+function uvs_packer.newPacker(uvs, tileSize)
     return uvs_packer(uvs, tileSize)
 end
 
@@ -100,7 +100,4 @@ function uvs_packer:addUV(nameId, textureName)
     return true
 end
 
----@class uvs_packer_funcs
-local uvs_packer_funcs = {newPacker = newUVsPacker}
-
-return uvs_packer_funcs
+return uvs_packer
