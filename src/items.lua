@@ -12,6 +12,57 @@ local OnGameRegisterCreativeItems = Game.Items.OnRegisterCreativeItems or Game.E
 local OnGameRegisterItems = Game.Items.OnRegisterItems or Game.Event.OnGameItemsRegister
 local OnGameRegisterItemsTextures = Game.Items.OnRegisterItemsTextures or Game.Event.OnGameItemsRegisterTexture
 
+---API Utility class for items. Allows to store info about an item that may or may not
+---be registered yet
+---@class ItemInstance
+local ItemInstance = CoreAPI.Utils.Classic:extend()
+
+---@param id string|number
+function ItemInstance:new(id)
+    if type(id) == "string" or type(id) == "number" then
+        self._id = id
+    end
+    self._item = nil
+end
+
+function ItemInstance:_try_get_item()
+    if type(self._id) == "number" then
+        ---@diagnostic disable-next-line: param-type-mismatch
+        self._item = Game.Items.findItemByID(self._id)
+    elseif type(self._id) == "string" then
+        ---@diagnostic disable-next-line: param-type-mismatch
+        self._item = CoreAPI.Items.getItem(self._id)
+    end
+    if self._item ~= nil then
+        return self._item.ID
+    end
+end
+
+---@return GameItem?
+function ItemInstance:getItem()
+    if self._item ~= nil then
+        self:_try_get_item()
+    end
+    return self._item
+end
+
+---@return integer?
+function ItemInstance:getID()
+    if self:getItem() then
+        return self._item.ID
+    end
+    return nil
+end
+
+CoreAPI.Items.ItemInstance = ItemInstance
+
+---Returns an ItemInstance that can be used when the target item is not registered yet
+---@param itemid string|number
+---@return ItemInstance
+function CoreAPI.Items.newItemInstance(itemid)
+    return ItemInstance(itemid)
+end
+
 ---@type ItemRegistry
 local itemRegistry = dofile(Core.getModpath("LunaCoreAPI") .. "/src/itemRegistry.lua")
 
@@ -52,20 +103,16 @@ end)
 
 --- Get the item id with the item identifier
 ---@param itemName string
----@return integer?
-function CoreAPI.Items.getItemId(itemName)
-    local itemId = nil
+---@return GameItem?
+function CoreAPI.Items.getItem(itemName)
     itemName = string.lower(itemName)
-    if string.match(itemName, "^minecraft:") then
+    local regInstance = CoreAPI.Items.Registry[itemName]
+    if regInstance ~= nil then
+        return regInstance.item
+    elseif string.match(itemName, "^minecraft:") then
         itemName = string.gsub(itemName, "^minecraft:", "")
-        local item = Game.Items.findItemByName(itemName)
-        if item then itemId = item.ID end
-    elseif not string.find(itemName, ":", 1, true) then
-        local item = Game.Items.findItemByName(itemName)
-        if item then itemId = item.ID end
+        return Game.Items.findItemByName(itemName)
     else
-        local instance = CoreAPI.Items.Registry[itemName]
-        if instance then itemId = instance.itemId end
+        return Game.Items.findItemByName(itemName)
     end
-    return itemId
 end

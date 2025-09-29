@@ -36,6 +36,9 @@ function CoreAPI.Utils.isinstance(t, o)
             return false
         end
         return false
+    elseif type(o) == "string" and type(t) == "userdata" then
+        local mt = getmetatable(t)
+        return mt and mt.__name == o
     end
     return type(t) == o
 end

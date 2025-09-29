@@ -79,6 +79,7 @@ end
 ---Registers an item and sets other properties including its texture
 ---@param nameId string
 ---@param definition table
+---@return GameItem?
 function itemRegistry:registerItem(nameId, itemId, definition)
     if itemRegistryGlobals.initializedItems then
         error("new items must be registered on mod load")
@@ -107,18 +108,10 @@ function itemRegistry:registerItem(nameId, itemId, definition)
     itemDefinition.locales = {}
 
     -- Default values
-    itemDefinition.group = CoreAPI.ItemGroups.Creative.newPositionIdentifier(CoreAPI.ItemGroups.FOOD_MINERALS, 0x7FFF)
-    itemDefinition.stackSize = 64
     itemDefinition.hasTexture = false
 
     itemDefinition.itemId = itemId
     if type(definition) == "table" then
-        if type(definition.group) == "table" then
-            itemDefinition.group = CoreAPI.ItemGroups.Creative.newPositionIdentifier(definition.group[1], definition.group[2])
-        elseif type(definition.group) == "number" then
-            itemDefinition.group = CoreAPI.ItemGroups.Creative.newPositionIdentifier(definition.group, 0x7FFF)
-        end
-
         if type(definition.locales) == "table" then
             for localeName, value in pairs(definition.locales) do
                 if not CoreAPI.Utils.Table.contains(CoreAPI.Languages, localeName) then
@@ -150,18 +143,10 @@ function itemRegistry:registerItem(nameId, itemId, definition)
                 itemDefinition.hasTexture = true
             end
         end
-
-        if type(definition.stackSize) == "number" then
-            if definition.stackSize < 1 then
-                error("stackSize must be greater than 1")
-            end
-            itemDefinition.stackSize = definition.stackSize
-        end
     end
     local regItem = Game.Items.registerItem(itemDefinition.name, itemDefinition.itemId)
     if regItem ~= nil then
         itemDefinition.item = regItem
-        regItem.StackSize = itemDefinition.stackSize
     else
         CoreAPI._logger:warn("Failed to register item '" .. itemDefinition.nameId .. "'")
         return
@@ -294,8 +279,9 @@ local function initResources()
             local count = 0
             for _ in pairs(Registry) do
                 count = count + 1
+                break -- Well we only need to check if at least there is one item
             end
-            if count < 1 then
+            if count == 0 then
                 return
             end
             if Core.Filesystem.fileExists(string.format("%s/loc/%s-pocket.blang", basePath, localeName)) then
@@ -316,6 +302,7 @@ local function initResources()
                                     changed = true
                                 end
                             end
+                            definition.locales[localeName] = nil
                         end
                         if changed then
                             localeParser:dumpFile(localeFile)
@@ -343,16 +330,7 @@ function itemRegistry:buildResources()
             if definition.item ~= nil then
                 if definition.hasTexture then
                     definition.item:setTexture(definition.textureName:gsub("/", "_"), 0)
-                else
-                    definition.item:setTexture("apple", 0)
                 end
-            end
-        end
-    end)
-    OnGameRegisterCreativeItems:Connect(function ()
-        for _, definition in ipairs(self.definitions) do
-            if definition.item ~= nil and CoreAPI.Utils.isinstance(definition.group, CoreAPI.ItemGroups.Creative.GroupPositionIdentifier) then
-                Game.Items.registerCreativeItem(definition.item, definition.group.id, definition.group:getCreativePosition())
             end
         end
     end)
