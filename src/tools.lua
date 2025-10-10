@@ -18,7 +18,7 @@ local ToolTier = CoreAPI.Utils.CLike.CStruct.newStruct({
     {"float", "MiningEfficiency"}, -- They really used float for an int value 
     {intType, "DamageBonus"},
     {intType, "Enchantability"}
-}, "ToolTier")
+})
 
 CoreAPI.Tools.ToolTier = ToolTier
 

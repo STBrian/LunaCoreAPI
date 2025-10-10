@@ -78,12 +78,10 @@ function carray:_get_value(key)
     return readFunc(self._offset + elementSize * (key - 1))
 end
 
-carray.__name = "carray"
 local carray_def_index = carray.__index
 carray.__index = function (self, key)
-    if type(key) == "number" then
-        local _get_value = rawget(carray, "_get_value")
-        return _get_value(self, key)
+    if type(key) == "number" and self._get_value then
+        return self:_get_value(key)
     end
     return carray_def_index[key]
 end
@@ -99,11 +97,17 @@ example:
 }
 ]]
 function cstruct:new(def)
-    local curOffset = 0
     self._allocated = false
     self._isInstance = false
     self._isClass = false
     self._fields = {}
+    self._sizeof = 0
+    self:_add_def_fields(def)
+    self._moffset = nil
+end
+
+function cstruct:_add_def_fields(def)
+    local curOffset = self._sizeof
     for _, value in ipairs(def) do
         value[1] = string.lower(value[1])
         local countMatch = 0
@@ -190,32 +194,27 @@ function cstruct:new(def)
         }
         curOffset = offset + size
     end
-    self._moffset = nil
     self._sizeof = curOffset
 end
 
 ---Creates a class for a cstruct definition
 ---@param def table
----@param name string
 ---@return table
-function cstruct.newStruct(def, name)
-    if type(name) ~= "string" then
-        error("name must be a string")
+function cstruct.newStruct(def)
+    if type(def) ~= "table" then
+        error("def must be a table")
     end
     local cls = cstruct:extend()
-    cls.__name = name
     cls:new(def)
     cls._isClass = true
     return cls
 end
 
 function cstruct:newInstance()
-    local t
-    if self._isClass then
-        t = self({})
-    else
-        error("you can only create an instance from a class struct")
+    if not self._isClass then
+        error("you can only create an instance from a struct class")
     end
+    local t = self({})
     t._fields = self._fields
     t._sizeof = self._sizeof
     local moffset = Core.Memory.malloc(self._sizeof)
@@ -229,12 +228,10 @@ function cstruct:newInstance()
 end
 
 function cstruct:newInstanceFromMemory(offset)
-    local t
-    if self._isClass then
-        t = self({})
-    else
-        error("you can only create an instance from a class struct")
+    if not self._isClass then
+        error("you can only create an instance from a struct class")
     end
+    local t = self({})
     t._fields = self._fields
     t._sizeof = self._sizeof
     t._allocated = false
@@ -311,20 +308,32 @@ end
 function cstruct:_implementIndex()
     local def_index = self.__index
     self.__index = function (t, key)
-        local _fields = rawget(t, "_fields")
-        if _fields and _fields[key] ~= nil then
+        if key ~= "_fields" and t._fields and t._fields[key] ~= nil then
             return t:_get_value(key)
         end
         return def_index[key]
     end
     self.__newindex = function (t, key, value)
-        local _fields = rawget(t, "_fields")
-        if _fields and _fields[key] ~= nil then
+        if key ~= "_fields" and t._fields and t._fields[key] ~= nil then
             t:_set_value(key, value)
             return
         end
         rawset(t, key, value)
     end
+end
+
+function cstruct:extendStructClass(def)
+    if not self._isClass then
+        error("you can only extend a struct class")
+    end
+    local cls = self:extend()
+    cls:new({})
+    for key, value in pairs(self._fields) do
+        cls._fields[key] = value
+    end
+    cls._sizeof = self._sizeof
+    cls:_add_def_fields(def)
+    return cls
 end
 
 function cstruct:extend()
@@ -333,7 +342,6 @@ function cstruct:extend()
     return cls
 end
 
-cstruct.__name = "cstruct"
 cstruct:_implementIndex()
 cstruct.__gc = function (self)
     if self._allocated then
