@@ -33,9 +33,6 @@ function ItemInstance:_try_get_item()
         ---@diagnostic disable-next-line: param-type-mismatch
         self._item = CoreAPI.Items.getItem(self._id)
     end
-    if self._item ~= nil then
-        return self._item.ID
-    end
 end
 
 ---@return GameItem?
