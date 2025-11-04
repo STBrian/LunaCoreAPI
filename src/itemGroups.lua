@@ -1,4 +1,4 @@
-local modPath = Core.getModpath("LunaCoreAPI")
+local modPath = Core.getModpath("lunacoreapi")
 
 CoreAPI.ItemGroups = {
     BUILDING_BOCKS = 1,

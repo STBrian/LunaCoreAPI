@@ -1,4 +1,4 @@
-local modid = "LunaCoreAPI"
+local modid = "lunacoreapi"
 local modpath = Core.getModpath(modid)
 
 CoreAPI = {_VERSION = "0.1.0"}

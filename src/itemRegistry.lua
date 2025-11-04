@@ -6,13 +6,13 @@ local function containsInvalidChars(s)
 end
 
 ---@type UVsPacker
-local uvs_packer = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/uvs/uvs_packer.lua")
+local uvs_packer = dofile(Core.getModpath("lunacoreapi") .. "/src/utils/uvs/uvs_packer.lua")
 ---@type UVsRebuilder
-local uvs_rebuilder = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/uvs/uvs_rebuilder.lua")
+local uvs_rebuilder = dofile(Core.getModpath("lunacoreapi") .. "/src/utils/uvs/uvs_rebuilder.lua")
 ---@type AtlasHandler
-local atlas_handler = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/atlas_handler.lua")
+local atlas_handler = dofile(Core.getModpath("lunacoreapi") .. "/src/utils/atlas_handler.lua")
 ---@type BlangParser
-local blang_parser = dofile(Core.getModpath("LunaCoreAPI") .. "/src/utils/blang_parser.lua")
+local blang_parser = dofile(Core.getModpath("lunacoreapi") .. "/src/utils/blang_parser.lua")
 
 --- Backwards compatibility with 0.12.0
 local OnGameRegisterCreativeItems = Game.Items.OnRegisterCreativeItems or Game.Event.OnGameCreativeItemsRegister
@@ -127,7 +127,7 @@ function itemRegistry:registerItem(nameId, itemId, definition)
         end
 
         if type(definition.texture) == "string" then
-            local modPath = Core.getModpath(self.modname)
+            local modPath = Core.getModpath(string.lower(self.modname))
             local texture = definition.texture
             if texture:match("^/") then
                 texture = string.sub(texture, 2)
