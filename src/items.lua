@@ -61,7 +61,7 @@ function CoreAPI.Items.newItemInstance(itemid)
 end
 
 ---@type ItemRegistry
-local itemRegistry = dofile(Core.getModpath("LunaCoreAPI") .. "/src/itemRegistry.lua")
+local itemRegistry = dofile(Core.getModpath("lunacoreapi") .. "/src/itemRegistry.lua")
 
 local itemsGlobals = {
     initializedItems = false
@@ -80,7 +80,7 @@ function CoreAPI.Items.newItemRegistry(modname)
     if containsInvalidChars(modname) then
         error("'modname' contains invalid characters")
     end
-    local modPath = Core.getModpath(modname)
+    local modPath = Core.getModpath(string.lower(modname))
     if modPath == nil then
         error("modname not registered")
     end
