@@ -9,7 +9,7 @@ local function readString(f, pos)
     while f:byte(pos + idx) ~= 0 do
         idx = idx + 1
     end
-    return f:sub(pos, pos + idx)
+    return f:sub(pos, pos + idx - 1)
 end
 
 ---@class UVsRebuilder
