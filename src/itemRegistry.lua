@@ -273,6 +273,7 @@ local function initResources()
     local titleId = Core.getTitleId()
     local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
 
+    -- TODO: Change all process to modify blang files to be an async task
     --- Modify every locale file
     for _, localeName in pairs(CoreAPI.Languages) do
         OnGameRegisterItems:Connect(function ()
