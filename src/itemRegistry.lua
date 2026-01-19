@@ -314,6 +314,11 @@ local function initResources()
             end
             collectgarbage("collect")
         end)
+        OnGameRegisterItems:Connect(function ()
+            if Game.reloadLanguage then
+                Game.reloadLanguage()
+            end
+        end)
     end
 end
 
