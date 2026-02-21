@@ -275,8 +275,8 @@ local function initResources()
 
     -- TODO: Change all process to modify blang files to be an async task
     --- Modify every locale file
-    for _, localeName in pairs(CoreAPI.Languages) do
-        OnGameRegisterItems:Connect(function ()
+    OnGameRegisterItems:Connect(Async.create(function ()
+        for _, localeName in pairs(CoreAPI.Languages) do
             local count = 0
             for _ in pairs(Registry) do
                 count = count + 1
@@ -294,6 +294,7 @@ local function initResources()
                     if not localeParser.parsed then
                         CoreAPI._logger:warn(string.format("Failed to parse locale file. Custom items may not have names for '%s'", localeName))
                     else
+                        Async.wait()
                         local changed = false
                         for _, definition in pairs(Registry) do
                             local itemName = definition.locales[localeName] or definition.locales["en_US"]
@@ -314,13 +315,10 @@ local function initResources()
                 end
             end
             collectgarbage("collect")
-        end)
-        OnGameRegisterItems:Connect(function ()
-            if Game.reloadLanguage then
-                Game.reloadLanguage()
-            end
-        end)
-    end
+            Async.wait()
+        end
+        Game.Resources.reloadLocale()
+    end))
 end
 
 function itemRegistry:buildResources()
