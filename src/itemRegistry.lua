@@ -14,10 +14,8 @@ local atlas_handler = dofile(Core.getModpath("lunacoreapi") .. "/src/utils/atlas
 ---@type BlangParser
 local blang_parser = dofile(Core.getModpath("lunacoreapi") .. "/src/utils/blang_parser.lua")
 
---- Backwards compatibility with 0.12.0
-local OnGameRegisterCreativeItems = Game.Items.OnRegisterCreativeItems or Game.Event.OnGameCreativeItemsRegister
-local OnGameRegisterItems = Game.Items.OnRegisterItems or Game.Event.OnGameItemsRegister
-local OnGameRegisterItemsTextures = Game.Items.OnRegisterItemsTextures or Game.Event.OnGameItemsRegisterTexture
+local OnGameRegisterItems = Game.Items.OnRegisterItems
+local OnGameRegisterItemsTextures = Game.Items.OnRegisterItemsTextures
 
 local Registry = CoreAPI.Items.Registry
 
@@ -273,8 +271,8 @@ local function initResources()
     local titleId = Core.getTitleId()
     local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
 
-    -- TODO: Change all process to modify blang files to be an async task
-    --- Modify every locale file
+    --- Async task to modify every locale file
+    --- Locales can be reloaded later so is safe to do it asynchronous
     OnGameRegisterItems:Connect(Async.create(function ()
         for _, localeName in pairs(CoreAPI.Languages) do
             local count = 0

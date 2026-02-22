@@ -7,10 +7,9 @@ local function containsInvalidChars(s)
     if string.find(s, "[^%w_]") then return true else return false end
 end
 
---- Backwards compatibility with 0.12.0
-local OnGameRegisterCreativeItems = Game.Items.OnRegisterCreativeItems or Game.Event.OnGameCreativeItemsRegister
-local OnGameRegisterItems = Game.Items.OnRegisterItems or Game.Event.OnGameItemsRegister
-local OnGameRegisterItemsTextures = Game.Items.OnRegisterItemsTextures or Game.Event.OnGameItemsRegisterTexture
+local OnGameRegisterCreativeItems = Game.Items.OnRegisterCreativeItems
+local OnGameRegisterItems = Game.Items.OnRegisterItems
+local OnGameRegisterItemsTextures = Game.Items.OnRegisterItemsTextures
 
 ---API Utility class for items. Allows to store info about an item that may or may not
 ---be registered yet

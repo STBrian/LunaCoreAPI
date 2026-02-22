@@ -1,5 +1,8 @@
 local modid = "lunacoreapi"
 
+CoreAPI = {_VERSION = "0.3.0"}
+CoreAPI.RuntimeInfo = {}
+
 -- Earlier versions of the runtime doesn't contain Core._VERSION so it will be nil
 if Core._VERSION then
     -- Manually checked since runtime min version param was added in 0.15.0
@@ -9,15 +12,11 @@ if Core._VERSION then
     -- only check min because major will still be 0 and patch doesn't really matter
     min = tonumber(min)
     if min < 15 then
-        error("LunaCoreAPI now requires LunaCore at least version 0.15.0. Please update the runtime")
+        error("LunaCoreAPI requires runtime version 0.15.0 or greater")
     end
-else
-    error("LunaCoreAPI now requires LunaCore at least version 0.15.0. Please update the runtime")
 end
 
 local modpath = Core.getModpath(modid)
-
-CoreAPI = {_VERSION = "0.1.0"}
 
 CoreAPI.Utils = {}
 dofile(modpath .. "/src/utils/string.lua")

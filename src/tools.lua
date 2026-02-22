@@ -1,11 +1,5 @@
 CoreAPI.Tools = {}
 
---- Backwards compatibility with 0.12.0
-local intType = "int"
-if not Core.Memory.readS32 then
-    intType = "unsigned int"
-end
-
 ---@class ToolTier : cstruct
 ---@field MiningLevel number
 ---@field Durability number
@@ -13,11 +7,11 @@ end
 ---@field DamageBonus number
 ---@field Enchantability number
 local ToolTier = CoreAPI.Utils.CLike.CStruct.newStruct({
-    {intType, "MiningLevel"},
-    {intType, "Durability"},
-    {"float", "MiningEfficiency"}, -- They really used float for an int value 
-    {intType, "DamageBonus"},
-    {intType, "Enchantability"}
+    {"int", "MiningLevel"},
+    {"int", "Durability"},
+    {"float", "MiningEfficiency"}, -- They really used a float for an int value 
+    {"int", "DamageBonus"},
+    {"int", "Enchantability"}
 })
 
 CoreAPI.Tools.ToolTier = ToolTier

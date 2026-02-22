@@ -10,7 +10,7 @@ CoreAPI.ItemGroups = {
     OTHERS = 7
 }
 
-local OnGameRegisterCreativeItems = Game.Items.OnRegisterCreativeItems or Game.Event.OnGameCreativeItemsRegister
+local OnGameRegisterCreativeItems = Game.Items.OnRegisterCreativeItems
 
 ---@class ItemGroupEntries
 local ItemGroupEntries = CoreAPI.Utils.Classic:extend()
