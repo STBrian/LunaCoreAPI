@@ -3,70 +3,273 @@ local struct = CoreAPI.Utils.Struct
 ---@class BlangParser
 local blang_parser = CoreAPI.Utils.Classic:extend()
 
----New blang parser
----@param file FilesystemFile
+--- Returns a new BlangParser. It's required that file will not be the same
+--- used when dumpFile is called
+---@param file string The path to the blang file
 ---@return BlangParser
 function blang_parser.newParser(file)
     return blang_parser(file)
 end
 
+local indexIteratorElement = {}
+function indexIteratorElement.__newindex(self, key, value)
+    local i = self._curIdx
+    local tbl = self._rootObj._tblData
+    if key == "hash" then
+        tbl[i*4 + 1] = value
+    elseif key == "srcPos" then
+        tbl[i*4 + 2] = value
+    elseif key == "newPos" then
+        tbl[i*4 + 3] = value
+    elseif key == "length" then
+        tbl[i*4 + 4] = value
+    end
+end
+function indexIteratorElement.__index(self, key)
+    local i = self._curIdx
+    local tbl = self._rootObj._tblData
+    if key == "hash" then
+        return tbl[i*4 + 1]
+    elseif key == "srcPos" then
+        return tbl[i*4 + 2]
+    elseif key == "newPos" then
+        return tbl[i*4 + 3]
+    elseif key == "length" then
+        return tbl[i*4 + 4]
+    elseif key == "index" then
+        return i
+    elseif key == "text" then
+        return self._rootObj._textData:sub(self.srcPos + 1, self.srcPos + self.length)
+    elseif key == "next" then
+        if i < self._rootObj:len() - 1 then
+            return indexIteratorElement.new(i+1, self._rootObj)
+        else
+            return nil
+        end
+    elseif key == "previous" then
+        if i > 0 then
+            return indexIteratorElement.new(i-1, self._rootObj)
+        else
+            return nil
+        end
+    end
+end
+---Creates a new indexIteratorElement
+---@param idx integer The index starts at 0
+---@param tbl table The reference to the index object
+---@return table
+function indexIteratorElement.new(idx, tbl)
+    local tblData = tbl._tblData
+    if tblData[idx*4+4] == nil then
+        error("Index out of range. "..tostring(idx), 2)
+    end
+    local element = {_curIdx=idx, _rootObj=tbl}
+    setmetatable(element, indexIteratorElement)
+    return element
+end
+
+local indexClass = {}
+indexClass.__index = function (self, key)
+    if type(key) == "number" then
+        if key < 0 then
+            return self:getIndexElement(self:len() + key)
+        else
+            return self:getIndexElement(key)
+        end
+    end
+    return indexClass[key]
+end
+function indexClass:len()
+    return #self._tblData / 4
+end
+function indexClass.new(srcText)
+    local newIns = {}
+    newIns._tblData = {}
+    newIns._textData = srcText
+    newIns._newTextData = {}
+    setmetatable(newIns, indexClass)
+    return newIns
+end
+function indexClass:appendNewIndex(hash, srcPos, textLen)
+    table.insert(self._tblData, hash) -- hash
+    table.insert(self._tblData, srcPos) -- srcPos
+    table.insert(self._tblData, srcPos) -- newPos
+    if textLen ~= nil then
+        table.insert(self._tblData, textLen) -- length
+    else
+        table.insert(self._tblData, 0) -- length
+    end
+    return indexIteratorElement.new(self:len() - 1, self)
+end
+function indexClass:insertNewIndex(idx, hash, newPos, textLen)
+    local curr = self:len() - 1
+    while curr >= idx do
+        self._tblData[(curr+1)*4+1] = self._tblData[curr*4+1] -- hash
+        self._tblData[(curr+1)*4+2] = self._tblData[curr*4+2] -- srcPos
+        self._tblData[(curr+1)*4+3] = self._tblData[curr*4+3] + textLen + 1 -- newPos
+        self._tblData[(curr+1)*4+4] = self._tblData[curr*4+4] -- length
+        curr = curr - 1
+    end
+    self._tblData[idx*4+1] = hash -- hash
+    self._tblData[idx*4+2] = newPos -- srcPos
+    self._tblData[idx*4+3] = newPos -- newPos
+    self._tblData[idx*4+4] = textLen -- length
+    return indexIteratorElement.new(idx, self)
+end
+function indexClass:getIndexElement(idx)
+    return indexIteratorElement.new(idx, self)
+end
+
+local function indexIterator(idxObj, startIndex)
+    local i = -1 -- -1 so it starts with index 0
+    if startIndex ~= nil then
+        i = startIndex - 1
+    end
+    local length = idxObj:len()
+    return function ()
+        i = i + 1
+        if i < length then
+            return indexIteratorElement.new(i, idxObj)
+        end
+    end
+end
+
+local function binarySearch(indexObj, targetVal)
+    local tbl = indexObj._tblData
+    local left = 0
+    local right = indexObj:len() - 1
+
+    while left <= right do
+        local mid = math.floor((left + right) / 2)
+
+        if tbl[mid*4 + 1] == targetVal then
+            return mid
+        end
+
+        if tbl[mid*4 + 1] < targetVal then
+            left = mid + 1
+        else
+            right = mid - 1
+        end
+    end
+    return -1
+end
+
+local function binarySearchInsertPos(indexObj, val)
+    local tbl = indexObj._tblData
+    local start = 0
+    local endI = indexObj:len() - 1
+
+    while start < endI do
+        local mid = math.floor((start + endI) / 2)
+        if val < tbl[mid*4 + 1] then
+            endI = mid
+        else
+            start = mid + 1
+        end
+    end
+    return start
+end
+
 ---comment
----@param file FilesystemFile
+---@param file string
 function blang_parser:new(file)
+    if coroutine.running() == nil then
+        error("This function must be called inside an async task", 2)
+    end
+    local intSize = 4
     self.parsed = false
     self.error = nil
-    if not file:isOpen() then
+
+    -- Open necessary files and prepare data
+    self._filePath = file
+    local originalFile = Core.Filesystem.open(file, "r")
+    self._srcFile = Core.Filesystem.open(file..".tmp", "w")
+    if not self._srcFile or not originalFile then
+        self.error = "Failed to open file"
+        return
+    end
+    self._srcFile:write(originalFile:read("*all") or "")
+    if self._srcFile:tell() <= 4 then
+        self.error = "Failed to make tmp file"
+        return
+    end
+    originalFile:close()
+    self._srcFile:close()
+    self._srcFile = Core.Filesystem.open(file..".tmp", "r")
+    if not self._srcFile then
+        self.error = "Failed to open tmp file"
         return
     end
 
-    local intSize = 4
-    file:seek(0, "set")
-    local length = struct.unpack("<I", file:read(intSize))
-    local file_data = file:read(length * intSize * 2)
-    local indexData = {}
+    -- Load and parse index data
+    local idxLen = self:readU32()
+    if idxLen == nil then return end
+    local file_data = self._srcFile:read(idxLen * intSize * 2)
     if file_data == nil then
         self.error = "Failed to read index data"
         return
-    else
-        for i = 0, length - 1 do
-            local hashName = struct.unpack("<I", file_data:sub(((intSize * 2 * i) + 1), ((intSize * 2 * i + 3) + 1)))
-            local texPos = struct.unpack("<I", file_data:sub(((intSize * 2 * i) + intSize + 1), (((intSize * 2 * i) + intSize + 3) + 1)))
-            table.insert(indexData, {hashName, texPos})
+    end
+    local textsLen = self:readU32()
+    if textsLen == nil then return end
+    local indexData = indexClass.new(self._srcFile:read(textsLen))
+
+    local asyncCounter = 0
+    for i = 0, idxLen - 1 do
+        local hashName = struct.unpack("<I", file_data:sub(((intSize * 2 * i) + 1), ((intSize * 2 * i + 3) + 1)))
+        local texPos = struct.unpack("<I", file_data:sub(((intSize * 2 * i) + intSize + 1), (((intSize * 2 * i) + intSize + 3) + 1)))
+        local newEntry = indexData:appendNewIndex(hashName, texPos)
+        local previous = newEntry.previous
+        if previous then -- Calculate previous text length
+            previous.length = (newEntry.srcPos - 1) - previous.srcPos
+        end
+        asyncCounter = asyncCounter + 1
+        if asyncCounter > 150 then
+            Async.wait()
+            asyncCounter = 0
         end
     end
+    local lastEntry = indexData[-1]
+    lastEntry.length = (textsLen - 1) - lastEntry.srcPos
 
-    file_data = nil
-    collectgarbage("collect")
-
-    length = struct.unpack("<I", file:read(intSize))
-    file_data = file:read(length)
-    local data = {}
-    if file_data == nil then
-        self.error = "Failed to read text data"
-        return
-    else
-        for index, value in ipairs(indexData) do
-            local finalPos = 0
-            if index < #indexData then
-                finalPos = indexData[index + 1][2] - 2
-            else
-                finalPos = #file_data - 1
-            end
-            data[value[1]] = string.sub(file_data, value[2] + 1, finalPos + 1)
-        end
-    end
-
-    self.data = data
-    indexData = nil
-    collectgarbage("collect")
+    self._indexData = indexData
+    self._newData = {}
     self.parsed = true
 end
 
---- Adds a text
+--- Tries to read an unsigned integer from srcFile. Returns nil if failure and sets error
+---@return integer|nil
+function blang_parser:readU32()
+    local status, res = pcall(struct.unpack, "<I", self._srcFile:read(4))
+    if not status then
+        self.error = "Read error"
+        return nil
+    end
+    return res
+end
+
+--- Checks if a textId is present
 ---@param textId string
 ---@return boolean
 function blang_parser:containsText(textId)
-    return self.data[CoreAPI.Utils.String.hash(textId:lower())] ~= nil
+    local textIdHash = CoreAPI.Utils.String.hash(textId:lower())
+    if self._newData[textIdHash] ~= nil then
+        return true
+    else
+        return binarySearch(self._indexData, textIdHash) > -1
+    end
+end
+
+--- Returns the index of indexData that corresponds to the textId. Returns -1 on failure
+---@param textId string
+---@return table?
+function blang_parser:getTextIndex(textId)
+    local textIdHash = CoreAPI.Utils.String.hash(textId:lower())
+    local textIndex = binarySearch(self._indexData, textIdHash)
+    if textIndex > -1 then
+        return self._indexData[textIndex]
+    end
+    return nil
 end
 
 --- Compares strings
@@ -74,52 +277,102 @@ end
 ---@param s string
 ---@return boolean
 function blang_parser:areEqual(textId, s)
-    return self.data[CoreAPI.Utils.String.hash(textId:lower())] == s
+    local textIdHash = CoreAPI.Utils.String.hash(textId:lower())
+    if self._newData[textIdHash] ~= nil then
+        return self._newData[textIdHash] == s
+    else
+        local idx = self:getTextIndex(textId)
+        if idx then
+            return idx.text == s
+        end
+    end
+    return false
 end
 
 --- Adds a text
 ---@param textId string
 ---@param text string
 function blang_parser:addText(textId, text)
-    self.data[CoreAPI.Utils.String.hash(textId:lower())] = text
+    self._newData[CoreAPI.Utils.String.hash(textId:lower())] = text
 end
 
---- Dumps to file
----@param file FilesystemFile
+--- Dumps to file. Returns if succeded. This function will fail if the output file
+--- is the same used as the input file
+---@param file string
 ---@return boolean
 function blang_parser:dumpFile(file)
-    if not file:isOpen() then
+    if coroutine.running() == nil then
+        error("This function must be called inside an async task", 2)
+    end
+    if self._filePath == file then
         return false
     end
-    local keys = {}
-    for key, _ in pairs(self.data) do
-        table.insert(keys, key)
+    local outFile = Core.Filesystem.open(file, "w")
+    if not outFile then
+        return false
     end
-    table.sort(keys)
+
+    local asyncCounter = 0
+    -- Insert new text entries to the index data
+    for key, textValue in pairs(self._newData) do
+        local itemIdx = binarySearch(self._indexData, key)
+        if itemIdx > -1 then -- Already exists so replace it
+            local entry = self._indexData[itemIdx]
+            local offset = #textValue - entry.length
+            entry.length = #textValue
+            entry.srcPos = -1
+            for subEntry in indexIterator(self._indexData, entry.index + 1) do
+                subEntry.newPos = subEntry.newPos + offset
+            end
+        else -- Doesn't exists so insert or append a new one
+            local insertIdx = binarySearchInsertPos(self._indexData, key)
+            if insertIdx >= self._indexData:len() then -- Out of range so appendNewIndex
+                local entry = self._indexData[-1]
+                local textPos = entry.newPos + entry.length + 1
+                self._indexData:appendNewIndex(key, textPos, #textValue)
+            else -- Else inside the list so insertNewIndex
+                local entry = self._indexData[insertIdx]
+                self._indexData:insertNewIndex(insertIdx, key, entry.newPos, #textValue)
+            end
+        end
+    end
+    Async.wait()
 
     local indexData = {}
-    local currStringPos = 0
-    file:seek(0, "set")
-    file:write(struct.pack("<I", #keys))
-    for _, key in ipairs(keys) do
-        table.insert(indexData, struct.pack("<I", key) .. struct.pack("<I", currStringPos))
-        currStringPos = currStringPos + #self.data[key] + 1
+    outFile:write(struct.pack("<I", self._indexData:len())) -- Write index section length
+    for entry in indexIterator(self._indexData) do
+        table.insert(indexData, struct.pack("<I", entry.hash) .. struct.pack("<I", entry.newPos))
+        asyncCounter = asyncCounter + 1
+        if asyncCounter > 200 then
+            asyncCounter = 0
+            Async.wait()
+        end
     end
-    file:write(table.concat(indexData))
-    file:write(struct.pack("<I", currStringPos))
-    indexData = nil
-    collectgarbage("collect")
+    outFile:write(table.concat(indexData))
+    local lastItem = self._indexData[-1]
+    outFile:write(struct.pack("<I", lastItem.newPos + lastItem.length + 1)) -- Write texts section length
 
-    -- Avoid copy all texts
-    local stringData = {}
-    for _, key in ipairs(keys) do
-        table.insert(stringData, self.data[key])
+    -- Write texts
+    local buffer = ""
+    for value in indexIterator(self._indexData) do
+        if self._newData[value.hash] ~= nil then
+            buffer = buffer .. self._newData[value.hash] .. string.char(0)
+        else
+            buffer = buffer .. value.text .. string.char(0)
+        end
+        if #buffer > 500 then
+            if #buffer > 0 then
+                outFile:write(buffer)
+                buffer = ""
+            end
+            Async.wait()
+        end
     end
-    table.insert(stringData, "")
-    file:write(table.concat(stringData, string.char(0)))
-    file:flush()
-    stringData = nil
-    collectgarbage("collect")
+    if #buffer > 0 then
+        outFile:write(buffer)
+        buffer = ""
+    end
+    outFile:close()
     return true
 end
 
