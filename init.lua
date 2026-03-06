@@ -59,7 +59,7 @@ function CoreAPI.Utils.isinstance(t, o)
         end
         return false
     elseif type(o) == "string" and type(t) == "userdata" and t.isType then
-        return t:isType(o)
+        return t:isType(o) -- Added in v0.17.0
     end
     return type(t) == o
 end

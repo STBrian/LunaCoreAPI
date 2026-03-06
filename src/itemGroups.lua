@@ -19,17 +19,19 @@ function ItemGroupEntries:new(itemGroup)
     self._groupid = itemGroup
 end
 
+local isinstance = CoreAPI.Utils.isinstance
+
 function ItemGroupEntries:_get_item_and_target(item, target)
     local addItem = nil
-    if CoreAPI.Utils.isinstance(item, CoreAPI.Items.ItemInstance) then
+    if isinstance(item, CoreAPI.Items.ItemInstance) then
         addItem = item:getItem()
-    elseif CoreAPI.Utils.isinstance(item, "GameItem") then
+    elseif isinstance(item, "GameItem") then
         addItem = item
     end
     local positionItem = nil
-    if CoreAPI.Utils.isinstance(target, CoreAPI.Items.ItemInstance) then
+    if isinstance(target, CoreAPI.Items.ItemInstance) then
         positionItem = target:getItem()
-    elseif CoreAPI.Utils.isinstance(target, "GameItem") then
+    elseif isinstance(target, "GameItem") then
         positionItem = target
     elseif type(target) == "string" then
         positionItem = CoreAPI.Items.getItem(target)
