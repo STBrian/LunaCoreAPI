@@ -1,14 +1,15 @@
 local struct = CoreAPI.Utils.Struct
 
----@class BlangParser
+---@class LCAPI_BlangParser
 local blang_parser = CoreAPI.Utils.Classic:extend()
 
 --- Returns a new BlangParser. It's required that file will not be the same
 --- used when dumpFile is called
 ---@param file string The path to the blang file
----@return BlangParser
-function blang_parser.newParser(file)
-    return blang_parser(file)
+---@param flags table? A table of flags that define class behaviour. Values: useAsync, noErrors
+---@return LCAPI_BlangParser
+function blang_parser.newParser(file, flags)
+    return blang_parser(file, flags)
 end
 
 local indexIteratorElement = {}
@@ -171,48 +172,56 @@ local function binarySearchInsertPos(indexObj, val)
     return start
 end
 
+---Tries to read an unsigned integer from srcFile. Returns nil if failure and sets error
+---@param srcFile FilesystemFile
+---@return integer
+local function readU32(srcFile)
+    local status, res = pcall(struct.unpack, "<I", srcFile:read(4))
+    if not status then
+        error("Read error")
+    end
+    return res
+end
+
 ---comment
 ---@param file string
-function blang_parser:new(file)
-    if coroutine.running() == nil then
-        error("This function must be called inside an async task", 2)
+---@param flags table?
+function blang_parser:new(file, flags)
+    if flags then
+        self._useAsync = flags.useAsync
+        self._noErrors = flags.noErrors
+    end
+    self.error = nil
+    if self._useAsync and coroutine.running() == nil then
+        self:throwError("This function must be called inside an async task")
+        return
     end
     local intSize = 4
-    self.parsed = false
-    self.error = nil
 
     -- Open necessary files and prepare data
-    self._filePath = file
-    local originalFile = Core.Filesystem.open(file, "r")
-    self._srcFile = Core.Filesystem.open(file..".tmp", "w")
-    if not self._srcFile or not originalFile then
-        self.error = "Failed to open file"
-        return
-    end
-    self._srcFile:write(originalFile:read("*all") or "")
-    if self._srcFile:tell() <= 4 then
-        self.error = "Failed to make tmp file"
-        return
-    end
-    originalFile:close()
-    self._srcFile:close()
-    self._srcFile = Core.Filesystem.open(file..".tmp", "r")
-    if not self._srcFile then
-        self.error = "Failed to open tmp file"
+    local srcFile = Core.Filesystem.open(file, "r")
+    if not srcFile then
+        self:throwError("Failed to open file")
         return
     end
 
     -- Load and parse index data
-    local idxLen = self:readU32()
-    if idxLen == nil then return end
-    local file_data = self._srcFile:read(idxLen * intSize * 2)
-    if file_data == nil then
-        self.error = "Failed to read index data"
+    local idxLen, file_data, textsLen, indexData
+    local status, err = pcall(function ()
+        idxLen = readU32(srcFile)
+        file_data = srcFile:read(idxLen * intSize * 2)
+        textsLen = readU32(srcFile)
+        indexData = indexClass.new(srcFile:read(textsLen))
+    end)
+    if not status then
+        self:throwError(err)
         return
     end
-    local textsLen = self:readU32()
-    if textsLen == nil then return end
-    local indexData = indexClass.new(self._srcFile:read(textsLen))
+    if file_data == nil then
+        self:throwError("Failed to read index data")
+        return
+    end
+    srcFile:close()
 
     local asyncCounter = 0
     for i = 0, idxLen - 1 do
@@ -225,7 +234,7 @@ function blang_parser:new(file)
         end
         asyncCounter = asyncCounter + 1
         if asyncCounter > 150 then
-            Async.wait()
+            if self._useAsync then Async.wait() end
             asyncCounter = 0
         end
     end
@@ -237,15 +246,12 @@ function blang_parser:new(file)
     self.parsed = true
 end
 
---- Tries to read an unsigned integer from srcFile. Returns nil if failure and sets error
----@return integer|nil
-function blang_parser:readU32()
-    local status, res = pcall(struct.unpack, "<I", self._srcFile:read(4))
-    if not status then
-        self.error = "Read error"
-        return nil
+function blang_parser:throwError(msg)
+    if self._noErrors then
+        self.error = msg
+        return
     end
-    return res
+    error(msg, 2)
 end
 
 --- Checks if a textId is present
@@ -301,11 +307,8 @@ end
 ---@param file string
 ---@return boolean
 function blang_parser:dumpFile(file)
-    if coroutine.running() == nil then
+    if self._useAsync and coroutine.running() == nil then
         error("This function must be called inside an async task", 2)
-    end
-    if self._filePath == file then
-        return false
     end
     local outFile = Core.Filesystem.open(file, "w")
     if not outFile then
@@ -336,7 +339,7 @@ function blang_parser:dumpFile(file)
             end
         end
     end
-    Async.wait()
+    if self._useAsync then Async.wait() end
 
     local indexData = {}
     outFile:write(struct.pack("<I", self._indexData:len())) -- Write index section length
@@ -345,7 +348,7 @@ function blang_parser:dumpFile(file)
         asyncCounter = asyncCounter + 1
         if asyncCounter > 200 then
             asyncCounter = 0
-            Async.wait()
+            if self._useAsync then Async.wait() end
         end
     end
     outFile:write(table.concat(indexData))
@@ -365,7 +368,7 @@ function blang_parser:dumpFile(file)
                 outFile:write(buffer)
                 buffer = ""
             end
-            Async.wait()
+            if self._useAsync then Async.wait() end
         end
     end
     if #buffer > 0 then

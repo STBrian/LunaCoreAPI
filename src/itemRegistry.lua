@@ -11,8 +11,7 @@ local uvs_packer = dofile(Core.getModpath("lunacoreapi") .. "/src/utils/uvs/uvs_
 local uvs_rebuilder = dofile(Core.getModpath("lunacoreapi") .. "/src/utils/uvs/uvs_rebuilder.lua")
 ---@type AtlasHandler
 local atlas_handler = dofile(Core.getModpath("lunacoreapi") .. "/src/utils/atlas_handler.lua")
----@type BlangParser
-local blang_parser = dofile(Core.getModpath("lunacoreapi") .. "/src/utils/blang_parser.lua")
+local blang_parser = CoreAPI.BlangParser
 
 local OnGameRegisterItems = Game.Items.OnRegisterItems
 local OnGameRegisterItemsTextures = Game.Items.OnRegisterItemsTextures
@@ -314,7 +313,7 @@ local function processLocale(localeName, waitUntilDone)
     local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
     if Core.Filesystem.fileExists(string.format("%s/loc/%s-pocket.blang.old", basePath, localeName)) then
         Core.Debug.log("Checking locale " .. string.format("%s-pocket.blang", localeName), true)
-        local localeParser = blang_parser.newParser(string.format("%s/loc/%s-pocket.blang.old", basePath, localeName))
+        local localeParser = blang_parser.newParser(string.format("%s/loc/%s-pocket.blang.old", basePath, localeName), {useAsync=true, noErrors=true})
         if not localeParser.parsed then
             CoreAPI._logger:warn(string.format("Failed to parse locale file. Custom items may not have names for '%s'. Error: %s", localeName, localeParser.error))
         else

@@ -1,31 +1,19 @@
 CoreAPI.Tools = {}
 
----@class ToolTier : cstruct
----@field MiningLevel number
----@field Durability number
----@field MiningEfficiency number
----@field DamageBonus number
----@field Enchantability number
-local ToolTier = CoreAPI.Utils.CLike.CStruct.newStruct({
-    {"int", "MiningLevel"},
-    {"int", "Durability"},
-    {"float", "MiningEfficiency"}, -- They really used a float for an int value 
-    {"int", "DamageBonus"},
-    {"int", "Enchantability"}
-})
+local ToolTier = CoreAPI.ToolTier
 
 CoreAPI.Tools.ToolTier = ToolTier
 
 local tiers = {}
----@type ToolTier
+---@type LCAPI_ToolTier
 tiers.WOOD = ToolTier:newInstanceFromMemory(0x00b0e124)
----@type ToolTier
+---@type LCAPI_ToolTier
 tiers.STONE = ToolTier:newInstanceFromMemory(0x00b0e138)
----@type ToolTier
+---@type LCAPI_ToolTier
 tiers.IRON = ToolTier:newInstanceFromMemory(0x00b0e14c)
----@type ToolTier
+---@type LCAPI_ToolTier
 tiers.DIAMOND = ToolTier:newInstanceFromMemory(0x00b0e160)
----@type ToolTier
+---@type LCAPI_ToolTier
 tiers.GOLD = ToolTier:newInstanceFromMemory(0x00b0e174)
 
 CoreAPI.Tools.Tiers = tiers
