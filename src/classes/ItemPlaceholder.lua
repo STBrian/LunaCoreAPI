@@ -20,7 +20,7 @@ function ItemPlaceholder:_try_get_item()
     end
 end
 
----@return GameItem?
+---@return MCItem?
 function ItemPlaceholder:getItem()
     if self._item ~= nil then
         self:_try_get_item()

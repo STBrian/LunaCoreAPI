@@ -15,13 +15,13 @@ local function _get_item_and_target(item, target)
     local addItem = nil
     if isinstance(item, CoreAPI.Items.ItemInstance) then
         addItem = item:getItem()
-    elseif isinstance(item, "GameItem") then
+    elseif isinstance(item, "MCItem") or isinstance(item, "GameItem") then
         addItem = item
     end
     local positionItem = nil
     if isinstance(target, CoreAPI.Items.ItemInstance) then
         positionItem = target:getItem()
-    elseif isinstance(target, "GameItem") then
+    elseif isinstance(target, "MCItem") or isinstance(target, "GameItem") then
         positionItem = target
     elseif type(target) == "string" then
         positionItem = CoreAPI.Items.getItem(target)
@@ -30,7 +30,7 @@ local function _get_item_and_target(item, target)
 end
 
 ---Adds the item at the end of the group. It doesn't do anything if item is nil
----@param item GameItem|LCAPI_ItemPlaceholder|nil
+---@param item MCItem|LCAPI_ItemPlaceholder|nil
 ---@param position integer?
 function ItemGroupEntry:add(item, position)
     if item == nil then return end
@@ -43,8 +43,8 @@ function ItemGroupEntry:add(item, position)
 end
 
 ---Adds the item after another item. It doesn't do anything if item is nil
----@param item GameItem|LCAPI_ItemPlaceholder|nil
----@param target GameItem|LCAPI_ItemPlaceholder|string
+---@param item MCItem|LCAPI_ItemPlaceholder|nil
+---@param target MCItem|LCAPI_ItemPlaceholder|string|nil
 function ItemGroupEntry:addAfter(item, target)
     if item == nil then return end
     local addItem, positionItem = _get_item_and_target(item, target)
@@ -55,8 +55,8 @@ function ItemGroupEntry:addAfter(item, target)
 end
 
 ---Adds the item before another item. It doesn't do anything if item is nil
----@param item GameItem|LCAPI_ItemPlaceholder|nil
----@param target GameItem|LCAPI_ItemPlaceholder|string
+---@param item MCItem|LCAPI_ItemPlaceholder|nil
+---@param target MCItem|LCAPI_ItemPlaceholder|string
 function ItemGroupEntry:addBefore(item, target)
     if item == nil then return end
     local addItem, positionItem = _get_item_and_target(item, target)

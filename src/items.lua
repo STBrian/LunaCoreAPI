@@ -60,7 +60,7 @@ end)
 
 --- Get the item id with the item identifier
 ---@param itemName string
----@return GameItem?
+---@return MCItem?
 function CoreAPI.Items.getItem(itemName)
     itemName = string.lower(itemName)
     local regInstance = CoreAPI.Items.Registry[itemName]

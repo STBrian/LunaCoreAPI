@@ -105,7 +105,7 @@ end
 ---Registers an item and sets other properties including its texture
 ---@param nameId string
 ---@param definition table
----@return GameItem?
+---@return MCItem?
 function itemRegistry:registerItem(nameId, itemId, definition)
     if itemRegistryGlobals.initializedItems then
         error("new items must be registered on mod load")
@@ -170,7 +170,18 @@ function itemRegistry:registerItem(nameId, itemId, definition)
             end
         end
     end
-    local regItem = Game.Items.registerItem(itemDefinition.name, itemDefinition.itemId)
+    local regItem
+    if definition.tool and definition.tier and not CoreAPI.Utils.isinstance(definition.tier, "MCToolTier") then
+        error("\"tier\" expected to be \"MCToolTier\"")
+    end
+    if definition.tool and not Game.Items.registerSwordItem then
+        error("Tools not available in this core version")
+    end
+    if definition.tool == "sword" then
+        regItem = Game.Items.registerSwordItem(itemDefinition.name, itemDefinition.itemId, definition.tier)
+    else
+        regItem = Game.Items.registerItem(itemDefinition.name, itemDefinition.itemId)
+    end
     if regItem ~= nil then
         itemDefinition.item = regItem
     else
@@ -312,7 +323,6 @@ local function processLocale(localeName, waitUntilDone)
     local titleId = Core.getTitleId()
     local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
     if Core.Filesystem.fileExists(string.format("%s/loc/%s-pocket.blang.old", basePath, localeName)) then
-        Core.Debug.log("Checking locale " .. string.format("%s-pocket.blang", localeName), true)
         local localeParser = blang_parser.newParser(string.format("%s/loc/%s-pocket.blang.old", basePath, localeName), {useAsync=true, noErrors=true})
         if not localeParser.parsed then
             CoreAPI._logger:warn(string.format("Failed to parse locale file. Custom items may not have names for '%s'. Error: %s", localeName, localeParser.error))
@@ -386,6 +396,8 @@ function itemRegistry:buildResources()
             if definition.item ~= nil then
                 if definition.hasTexture then
                     definition.item:setTexture(definition.textureName:gsub("/", "_"), 0)
+                else
+                    definition.item:setTexture("apple", 0)
                 end
             end
         end
