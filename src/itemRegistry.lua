@@ -179,6 +179,14 @@ function itemRegistry:registerItem(nameId, itemId, definition)
     end
     if definition.tool == "sword" then
         regItem = Game.Items.registerSwordItem(itemDefinition.name, itemDefinition.itemId, definition.tier)
+    elseif definition.tool == "axe" then
+        regItem = Game.Items.registerAxeItem(itemDefinition.name, itemDefinition.itemId, definition.tier)
+    elseif definition.tool == "pickaxe" then
+        regItem = Game.Items.registerPickxeItem(itemDefinition.name, itemDefinition.itemId, definition.tier)
+    elseif definition.tool == "shovel" then
+        regItem = Game.Items.registerShovelItem(itemDefinition.name, itemDefinition.itemId, definition.tier)
+    elseif definition.tool == "hoe" then
+        regItem = Game.Items.registerHoeItem(itemDefinition.name, itemDefinition.itemId, definition.tier)
     else
         regItem = Game.Items.registerItem(itemDefinition.name, itemDefinition.itemId)
     end
