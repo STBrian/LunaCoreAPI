@@ -335,7 +335,7 @@ local function processLocale(localeName, waitUntilDone)
         if not localeParser.parsed then
             CoreAPI._logger:warn(string.format("Failed to parse locale file. Custom items may not have names for '%s'. Error: %s", localeName, localeParser.error))
         else
-            Async.wait()
+            if waitUntilDone then Async.wait() end
             local changed = false
             for _, definition in pairs(Registry) do
                 local itemName = definition.locales[localeName] or definition.locales["en_US"]
@@ -378,7 +378,7 @@ local function initResources()
             return
         end
         local currentLocale = Game.Resources.getLocale()
-        processLocale(currentLocale, true)
+        processLocale(currentLocale, type(jit) ~= "table") -- Is it's JIT it shouldn't waitUntilDone
         collectgarbage("collect")
         Game.Resources.reloadLocale()
         for _, localeName in pairs(CoreAPI.Languages) do

@@ -17,6 +17,12 @@ function logger.newLogger(idname)
     end
 end
 
+function logger:message(msg)
+    local out = "[INFO] "
+    out = out .. "(" .. self._idname .. ") " .. msg
+    Core.Debug.log(out, true)
+end
+
 function logger:info(msg)
     local out = "[INFO] "
     out = out .. "(" .. self._idname .. ") " .. msg

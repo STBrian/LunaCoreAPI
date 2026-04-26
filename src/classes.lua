@@ -9,5 +9,10 @@ CoreAPI.ItemPlaceholder = dofile(modPath .. "/src/classes/ItemPlaceholder.lua")
 ---@type LCAPI_ToolTier
 CoreAPI.ToolTier = dofile(modPath .. "/src/classes/ToolTier.lua")
 
----@type LCAPI_BlangParser
-CoreAPI.BlangParser = dofile(Core.getModpath("lunacoreapi") .. "/src/classes/BlangParser.lua")
+if type(jit) == "table" then
+    ---@type LCAPI_BlangParser
+    CoreAPI.BlangParser = dofile(Core.getModpath("lunacoreapi") .. "/src/classes/BlangParserJIT.lua")
+else
+    ---@type LCAPI_BlangParser
+    CoreAPI.BlangParser = dofile(Core.getModpath("lunacoreapi") .. "/src/classes/BlangParser.lua")
+end
