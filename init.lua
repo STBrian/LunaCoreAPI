@@ -36,6 +36,7 @@ CoreAPI.Utils.Classic = dofile(modpath .. "/src/external/classic.lua")
 ---@type BitOpClass
 CoreAPI.Utils.Bitop = dofile(modpath .. "/src/external/bitop/funcs.lua")
 
+--Core.Memory.writeU32(0x77263c, CoreAPI.Utils.String.hash("music.game.creative"))
 ---@type Logger
 CoreAPI.Utils.Logger = dofile(modpath .. "/src/utils/logger.lua")
 

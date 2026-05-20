@@ -1,10 +1,6 @@
 local ffi = require("ffi")
 jit.off()
 
-local log = function (msg)
-    Core.Debug.log(tostring(msg), true)
-end
-
 ---@class LCAPI_BlangParser
 local blang_parser = {}
 blang_parser.__index = blang_parser
@@ -73,7 +69,7 @@ end
 ---@return integer
 local function readU32(srcFile)
     local data = srcFile:read(4)
-    if not data then error("Read error") end
+    if not data then error("Read u32 error") end
     local buf = ffi.new("uint32_t[1]")
     ffi.copy(buf, data, 4)
     return tonumber(buf[0])
@@ -92,7 +88,7 @@ end
 ---@param len integer
 local function readToBuffer(srcFile, buffer, len)
     local data = srcFile:read(len)
-    if not data then error("Read error") end
+    if not data then error("Read buffer error") end
     ffi.copy(buffer, data, len)
 end
 
@@ -100,7 +96,6 @@ end
 ---@param file string
 ---@param flags table?
 function blang_parser:new(file, flags)
-    log("Start new")
     if flags then
         -- No needed with jit
         --self._useAsync = flags.useAsync 
@@ -112,7 +107,6 @@ function blang_parser:new(file, flags)
         return
     end
 
-    log("New file")
     -- Open necessary files and prepare data
     local srcFile = Core.Filesystem.open(file, "r")
     if not srcFile then
@@ -121,7 +115,6 @@ function blang_parser:new(file, flags)
     end
 
     -- Load and parse index data
-    log("Read")
     local indexData, textsData
     local status, err = pcall(function ()
         indexData = ffi.new("BlangIndexElement[?]", readU32(srcFile))
@@ -139,7 +132,6 @@ function blang_parser:new(file, flags)
     self._textsData = textsData
     self._newData = {}
     self.parsed = true
-    log("New done")
 end
 
 function blang_parser:throwError(msg)
@@ -220,7 +212,6 @@ end
 ---@param file string
 ---@return boolean
 function blang_parser:dumpFile(file)
-    log("Dumping")
     if self._useAsync and coroutine.running() == nil then
         error("This function must be called inside an async task", 2)
     end
@@ -235,21 +226,17 @@ function blang_parser:dumpFile(file)
     local currTextPos = ffi.sizeof(self._textsData)
     local newDataToAppend = ""
     if newDataLen > 0 then
-        log("Dumping 2")
         nelemlen = oldArrLen + newDataLen
         local nbuf = ffi.new("BlangIndexElement[?]", nelemlen)
         ffi.copy(nbuf, self._indexData, ffi.sizeof(self._indexData))
         self._indexData = nbuf
         collectgarbage("collect")
         for key, textValue in pairs(self._newData) do
-            log("Dumping... 1")
             local itemIdx = binarySearch(self._indexData, key, oldArrLen)
-            log("Dumping... 2")
             if itemIdx > -1 then -- Already exists so replace it
                 local entry = self._indexData[itemIdx]
                 local len = #self:textFromIndexObj(entry)
                 if len == #textValue or len < #textValue then
-                    log("Cast")
                     ffi.copy(ffi.cast("const char*", self._textsData) + entry.textPos, textValue..string.char(0))
                 else
                     entry.textPos = currTextPos
@@ -257,18 +244,14 @@ function blang_parser:dumpFile(file)
                     newDataToAppend = newDataToAppend .. textValue..string.char(0)
                 end
             else -- Doesn't exists so insert or append a new one
-                log("Dumping... 3.1")
                 local insertIdx = binarySearchInsertPos(self._indexData, key, oldArrLen)
-                log("Dumping... 3.2")
                 oldArrLen = oldArrLen + 1
                 insertNewIndex(self._indexData, {hashName = key, textPos = currTextPos}, insertIdx)
-                log("Dumping... 3.3")
                 currTextPos = currTextPos + #textValue + 1
+                newDataToAppend = newDataToAppend .. textValue..string.char(0)
             end
-            log("Dumping... end")
         end
     end
-    log("Dumping end loop")
 
     local outFile = Core.Filesystem.open(file, "w")
     if not outFile then
@@ -281,8 +264,8 @@ function blang_parser:dumpFile(file)
     if #newDataToAppend > 0 then
         outFile:write(newDataToAppend)
     end
+    outFile:flush()
     outFile:close()
-    log("Dumping done")
     return true
 end
 
