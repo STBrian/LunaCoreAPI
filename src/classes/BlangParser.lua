@@ -221,6 +221,10 @@ function blang_parser:new(file, flags)
         self:throwError("Failed to read index data")
         return
     end
+    if indexData._textData == nil then
+        self:throwError("Failed to read text content")
+        return
+    end
     srcFile:close()
 
     local asyncCounter = 0

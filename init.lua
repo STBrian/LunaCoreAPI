@@ -2,24 +2,23 @@ local modid = "lunacoreapi"
 
 CoreAPI = {_VERSION = "0.3.0"}
 
-local dataDir = "sdmc:/Minecraft 3DS/data"
-Core.Filesystem.createDirectory(dataDir)
-dataDir = dataDir .. "/LunaCoreAPI"
-Core.Filesystem.createDirectory(dataDir)
-
-local modMenuFolder = Core.Menu.getMenuFolder():newFolder("LunaCoreAPI")
-CoreAPI._addMenuEntry = function (name, callback)
-    modMenuFolder:newEntry(name, callback)
-end
-
 -- Earlier versions of the runtime doesn't contain Core._VERSION so it will be nil
 if Core._VERSION then
     local maj, min, pat = Core._VERSION:match("^LunaCore (%d+)%.(%d+)%.(%d+)$")
     -- only check min because major will still be 0 and patch doesn't really matter
     min = tonumber(min)
-    if min < 15 then
-        error("LunaCoreAPI requires runtime version 0.15.0 or greater")
+    if min < 21 then
+        error("LunaCoreAPI requires runtime version 0.21.0 or greater")
     end
+else
+    error("LunaCoreAPI requires runtime version 0.21.0 or greater")
+end
+
+Core.Filesystem.createDirectory("data:/LunaCoreAPI")
+
+local modMenuFolder = Core.Menu.getMenuFolder():newFolder("LunaCoreAPI")
+CoreAPI._addMenuEntry = function (name, callback)
+    modMenuFolder:newEntry(name, callback)
 end
 
 local modpath = Core.getModpath(modid)
@@ -40,7 +39,7 @@ CoreAPI.Utils.Bitop = dofile(modpath .. "/src/external/bitop/funcs.lua")
 ---@type Logger
 CoreAPI.Utils.Logger = dofile(modpath .. "/src/utils/logger.lua")
 
-CoreAPI._logger = CoreAPI.Utils.Logger.newLogger(modid)
+CoreAPI._logger = CoreAPI.Utils.Logger.newLogger(modid, "debug")
 
 CoreAPI.Utils.CLike = {}
 ---@type cstruct

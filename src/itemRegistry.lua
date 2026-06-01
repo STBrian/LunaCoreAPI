@@ -1,6 +1,8 @@
 ---@class ItemRegistry
 local itemRegistry = CoreAPI.Utils.Classic:extend()
 
+local LOGGER = CoreAPI._logger
+
 local function containsInvalidChars(s)
     if string.find(s, "[^%w_]") then return true else return false end
 end
@@ -34,13 +36,11 @@ end)
 --- Init ItemRegistry globals
 local function initItemRegistry()
     local titleId = Core.getTitleId()
-    local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
-
     --- Warning about missing files
     --- Atlas UVs
     for packName, value in pairs(CoreAPI.ResourcePacks) do
-        if not Core.Filesystem.fileExists(string.format("%s/atlas/atlas.items.meta_%08X.uvs", basePath, value.hash)) then
-            CoreAPI._logger:warn(string.format("No atlas uvs found! Custom items won't have texture for '%s' pack. Please provide an atlas uvs under %s/atlas/atlas.items.meta_%08X.uvs", packName, basePath, value.hash))
+        if not Core.Filesystem.fileExists(string.format("lfs:/atlas/atlas.items.meta_%08X.uvs", value.hash)) then
+            CoreAPI._logger:warn(string.format("No atlas uvs found! Custom items won't have texture for '%s' pack. Please provide an atlas uvs under sdmc:/luma/titles/%s/romfs/atlas/atlas.items.meta_%08X.uvs", packName, titleId, value.hash))
         else
             table.insert(itemRegistryGlobals.allowedUVs, packName)
         end
@@ -48,8 +48,8 @@ local function initItemRegistry()
 
     --- Atlas textures
     for packName, value in pairs(CoreAPI.ResourcePacks) do
-        if not Core.Filesystem.fileExists(string.format("%s/atlas/atlas.items.meta_%08X_0.3dst", basePath, value.hash)) then
-            CoreAPI._logger:warn(string.format("No atlas texture found! Custom items may not have texture for '%s' pack. Please provide an atlas texture under %s/atlas/atlas.items.meta_%08X_0.3dst", packName, basePath, value.hash))
+        if not Core.Filesystem.fileExists(string.format("lfs:/atlas/atlas.items.meta_%08X_0.3dst", value.hash)) then
+            CoreAPI._logger:warn(string.format("No atlas texture found! Custom items may not have texture for '%s' pack. Please provide an atlas texture under sdmc:/luma/titles/%s/romfs/atlas/atlas.items.meta_%08X_0.3dst", packName, titleId, value.hash))
         else
             table.insert(itemRegistryGlobals.allowedTextures, packName)
         end
@@ -57,21 +57,18 @@ local function initItemRegistry()
 
     --- Locales
     for _, localeName in pairs(CoreAPI.Languages) do
-        if not Core.Filesystem.fileExists(string.format("%s/loc/%s-pocket.blang", basePath, localeName)) then
-            CoreAPI._logger:warn(string.format("No locale file found! Custom items won't have a locale name for '%s'. Please provide a locale file under %s/loc/%s-pocket.blang", localeName, basePath, localeName))
+        if not Core.Filesystem.fileExists(string.format("lfs:/loc/%s-pocket.blang", localeName)) then
+            CoreAPI._logger:warn(string.format("No locale file found! Custom items won't have a locale name for '%s'. Please provide a locale file under sdmc:/luma/titles/%s/romfs/loc/%s-pocket.blang", localeName, titleId, localeName))
         else
-            if not Core.Filesystem.fileExists(string.format("%s/loc/%s-pocket.blang.bak", basePath, localeName)) then
-                local ogFile = Core.Filesystem.open(string.format("%s/loc/%s-pocket.blang", basePath, localeName), "r")
-                local bakFile = Core.Filesystem.open(string.format("%s/loc/%s-pocket.blang.bak", basePath, localeName), "w")
+            if not Core.Filesystem.fileExists(string.format("lfs:/loc/%s-pocket.blang.bak", localeName)) then
+                local ogFile = Core.Filesystem.open(string.format("lfs:/loc/%s-pocket.blang", localeName), "r")
+                local bakFile = Core.Filesystem.open(string.format("lfs:/loc/%s-pocket.blang.bak", localeName), "w")
                 if ogFile and bakFile then
                     bakFile:write(ogFile:read("*all") or '')
+                    CoreAPI._logger:info("Created backup for " .. string.format("%s-pocket.blang", localeName))
                 end
-            end
-            local ogFile = Core.Filesystem.open(string.format("%s/loc/%s-pocket.blang", basePath, localeName), "r")
-            local oldFile = Core.Filesystem.open(string.format("%s/loc/%s-pocket.blang.old", basePath, localeName), "w")
-            if ogFile and oldFile then
-                oldFile:write(ogFile:read("*all") or '')
-                CoreAPI._logger:info("Created backup for " .. string.format("%s-pocket.blang", localeName))
+            else
+                LOGGER:warn("Failed to create backup for " .. string.format("%s-pocket.blang", localeName))
             end
         end
         collectgarbage("collect")
@@ -81,12 +78,12 @@ local function initItemRegistry()
 end
 
 CoreAPI._addMenuEntry("Restore lang files", function ()
-    local titleId = Core.getTitleId()
-    local basePath = string.format("sdmc:/luma/titles/%s/romfs/loc", titleId)
     for _, localeName in pairs(CoreAPI.Languages) do
-        if Core.Filesystem.fileExists(string.format("%s/%s-pocket.blang.bak", basePath, localeName)) then
-            local bakFile = Core.Filesystem.open(string.format("%s/%s-pocket.blang.bak", basePath, localeName), "r")
-            local outFile = Core.Filesystem.open(string.format("%s/%s-pocket.blang", basePath, localeName), "w")
+        local localePath = string.format("lfs:/loc/%s-pocket.blang", localeName)
+        local localeBakPath = localePath..".bak"
+        if Core.Filesystem.fileExists(localeBakPath) then
+            local bakFile = Core.Filesystem.open(localeBakPath, "r")
+            local outFile = Core.Filesystem.open(localePath, "w")
             if outFile and bakFile then
                 outFile:write(bakFile:read("*all") or '')
             end
@@ -223,10 +220,7 @@ end
 ---@param out table?
 ---@return boolean
 function itemRegistry:modifyPackUVs(pack, packName, out)
-    local titleId = Core.getTitleId()
-    local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
-
-    local uvsFile = Core.Filesystem.open(string.format("%s/atlas/atlas.items.meta_%08X.uvs", basePath, pack.hash), "r+")
+    local uvsFile = Core.Filesystem.open(string.format("lfs:/atlas/atlas.items.meta_%08X.uvs", pack.hash), "r+")
     if not uvsFile then
         CoreAPI._logger:warn(string.format("Failed to open UVs file. Custom items may not have texture for '%s' pack", packName))
         return false
@@ -282,10 +276,7 @@ local function pasteTextureToAtlas(uvItem, definition, handler)
 end
 
 function itemRegistry:modifyTextureAtlas(pack, packName, uvsData)
-    local titleId = Core.getTitleId()
-    local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
-
-    local atlasFile = Core.Filesystem.open(string.format("%s/atlas/atlas.items.meta_%08X_0.3dst", basePath, pack.hash), "r+")
+    local atlasFile = Core.Filesystem.open(string.format("lfs:/atlas/atlas.items.meta_%08X_0.3dst", pack.hash), "r+")
     if not atlasFile then
         CoreAPI._logger:warn(string.format("Failed to open atlas file. Custom items may not have texture for '%s' pack", packName))
         return false
@@ -328,12 +319,11 @@ local function BuildingResourcesScreenCallback(screen)
 end
 
 local function processLocale(localeName, waitUntilDone)
-    local titleId = Core.getTitleId()
-    local basePath = string.format("sdmc:/luma/titles/%s/romfs", titleId)
-    if Core.Filesystem.fileExists(string.format("%s/loc/%s-pocket.blang.old", basePath, localeName)) then
-        local localeParser = blang_parser.newParser(string.format("%s/loc/%s-pocket.blang.old", basePath, localeName), {useAsync=true, noErrors=true})
+    if Core.Filesystem.fileExists(string.format("lfs:/loc/%s-pocket.blang", localeName)) then
+        LOGGER:debug("Parsing " .. string.format("%s-pocket.blang", localeName))
+        local localeParser = blang_parser.newParser(string.format("lfs:/loc/%s-pocket.blang", localeName), {useAsync=true, noErrors=true})
         if not localeParser.parsed then
-            CoreAPI._logger:warn(string.format("Failed to parse locale file. Custom items may not have names for '%s'. Error: %s", localeName, localeParser.error))
+            LOGGER:warn(string.format("Failed to parse locale file. Custom items may not have names for '%s'. Error: %s", localeName, localeParser.error))
         else
             if waitUntilDone then Async.wait() end
             local changed = false
@@ -352,8 +342,10 @@ local function processLocale(localeName, waitUntilDone)
                 end
             end
             if changed then
-                CoreAPI._logger:info("Building locale " .. string.format("%s-pocket.blang", localeName))
-                localeParser:dumpFile(string.format("%s/loc/%s-pocket.blang", basePath, localeName))
+                LOGGER:debug(string.format("Building locale %s-pocket.blang", localeName))
+                if not localeParser:dumpFile(string.format("lfs:/loc/%s-pocket.blang", localeName)) then
+                    LOGGER:warn(string.format("Failed to dump locale file. Custom items may not have names for '%s'", localeName))
+                end
                 if waitUntilDone then
                     finishedBuildingResources = true
                     Async.wait() -- Wait for the game to resume
